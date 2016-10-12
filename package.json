@@ -18,5 +18,6 @@
   "repository": {
     "type": "git",
     "url": "https://gitlab.com/glug/glug.git"
-  }
+  },
+  "license": "MIT"
 }
