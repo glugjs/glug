@@ -1,16 +1,19 @@
 console.log 'script started'
+
+base_path = process.cwd()
+
+console.log base_path
+
 fs = require('graceful-fs')
 path = require('path')
 chokidar = require('chokidar')
 transformer = require('jstransformer')
 recursive = require('fs-readdir-recursive')
 matter = require('gray-matter')
-config = require('./config')
+config = require("#{base_path}/config")
 b_sync = require('browser-sync')
 hljs = undefined
-jeet = require('jeet')
-rupture = require('rupture')
-axis = require('axis')
+
 #
 console.log('done with requires')
 
@@ -52,25 +55,18 @@ rm_dir = (path) ->
 transformers = {}
 
 transformers = merge(transformers, config.transformers)
-# if transformers.stylus? and transformers.stylus.use_modules?
-#   for module, i in transformers.stylus.use_modules
-#     # transformers.stylus.use_modules.splice(i, 1)
-#     print "module is #{module}"
-#     print "require(\"#{module}\")"
-#     required_module = require(module)
-#     print required_module
-#     transformers.stylus.use ||= []
-#     transformers.stylus.use.push(required_module)
-#     print required_module is null
-
-#     json transformers.stylus
 
 renderers = {}
 
 print 'about to require jstransformers'
 for name, options of transformers
   print "require(\"jstransformer-#{name}\")"
-  renderers[name] = transformer(require("jstransformer-#{name}"))
+
+  try
+    renderers[name] = transformer(config[name])
+
+  catch error
+    throw "#{error}\n\nTry running `npm install --save jstransformer-#{name}`"
 
 print 'done requiring jstransformers'
 
@@ -79,7 +75,7 @@ paths = {}
 input_dir  = config.input_dir  || 'app'
 output_dir = config.output_dir || 'public'
 
-if config.transformers['markdown-it'].highlight?
+if config.transformers['markdown-it']? and config.transformers['markdown-it'].highlight?
   hljs = require('highlight.js')
   transformers['markdown-it'].highlight = (str, lang) ->
     if lang and hljs.getLanguage(lang)
@@ -96,7 +92,7 @@ transformers_for = (filetype) ->
       renderer_names.push name
 
   if renderer_names.length is 0
-    print 'renderer_names is empty'
+    # print 'renderer_names is empty'
     return []
 
   last_renderer_name = renderer_names[renderer_names.length - 1]
@@ -170,7 +166,7 @@ render = (contents, input_format, settings={}, callback) ->
       frontmatter.layout ||= config.default_layout || 'layout'
 
     if frontmatter.layout? and not renderer_config.is_layout
-      print 'layout is', frontmatter.layout
+      # print 'layout is', frontmatter.layout
       layout_location = "#{input_dir}/#{config.views_dir}/#{frontmatter.layout}.#{config.layout_extension}"
       layout_content = fs.readFileSync layout_location, { encoding: 'utf8' }
 
@@ -185,7 +181,7 @@ render = (contents, input_format, settings={}, callback) ->
         callback)
 
     else
-      print "rendered_contents:", rendered_contents
+      # print "rendered_contents:", rendered_contents
       callback(rendered_contents)
 
 render_file = (file) ->
