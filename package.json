@@ -5,6 +5,9 @@
   "keywords": [
     "JSTransformers"
   ],
+  "bin": {
+    "glug": "./bin/glug"
+  },
   "dependencies": {
     "chokidar": "^1.6.0",
     "fs-readdir-recursive": "^1.0.0",
