@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+
+require('coffee-script/register')
+var cli = new (require('../app.coffee'))
+var pkg = require('../package.json')
+var notifier = require('update-notifier')
+
+// new version notification
+notifier({ pkg: pkg }).notify()

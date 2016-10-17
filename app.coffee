@@ -143,15 +143,7 @@ render = (contents, input_format, settings={}, callback) ->
 
     renderer_names = transformers_for input_format
 
-    renderer_name = renderer_names[0]
-
-    renderer_config = transformers[renderer_name]
-
     json renderer_names
-    print "Using renderer #{renderer_name}"
-    renderer = renderers[renderer_name]
-
-    output_format = renderer.outputFormat
 
     # print "renderer: #{renderer_name}, input: #{input_format}, output: #{output_format}"
 
@@ -161,43 +153,40 @@ render = (contents, input_format, settings={}, callback) ->
           input_dir
         ]
 
-    renderer_config = merge(settings, renderer_config, {filename: file}, frontmatter)
-    # renderer_config = merge(renderer_config, frontmatter)
+    rendered_contents = contents
 
-    # json renderer_config
+    for renderer_name in renderer_names
+      print "Using renderer #{renderer_name}"
+      renderer = renderers[renderer_name]
+      renderer_config = transformers[renderer_name]
 
-    renderer.renderAsync(contents, renderer_config, (err, rendered_contents) ->
-      if err
-        throw err
-      
-      rendered_contents = rendered_contents.body
-      renderer_names.shift()
+      output_format = renderer.outputFormat
 
-      if output_format is 'html'
-        frontmatter.layout ||= config.default_layout || 'layout'
+      renderer_config = merge(settings, renderer_config, {filename: file}, frontmatter)
 
-      if frontmatter.layout? and not renderer_config.is_layout
-        layout_location = "#{input_dir}/#{config.views_dir}/#{frontmatter.layout}.#{config.layout_extension}"
-        fs.readFile layout_location, { encoding: 'utf8' }, (err, text) ->
+      rendered_contents = renderer.render(rendered_contents, renderer_config).body
 
-          if err
-            throw err
+    if output_format is 'html'
+      frontmatter.layout ||= config.default_layout || 'layout'
 
-          layout_config = merge(renderer_config, 
-            contents: rendered_contents
-            is_layout: true
-          )
+    if frontmatter.layout? and not renderer_config.is_layout
+      print 'layout is', frontmatter.layout
+      layout_location = "#{input_dir}/#{config.views_dir}/#{frontmatter.layout}.#{config.layout_extension}"
+      layout_content = fs.readFileSync layout_location, { encoding: 'utf8' }
 
-          render(text, config.layout_extension, layout_config, callback)
+      layout_config = merge(renderer_config, 
+        contents: rendered_contents
+        is_layout: true
+      )
 
-      else if renderer_config.is_layout
-        callback(rendered_contents)
-      else if renderer_names.length > 0
-        render(rendered_contents, output_format, {}, callback)
-      else if callback?
-        callback(rendered_contents)
+      new_contents = render(layout_content,
+        config.layout_extension,
+        layout_config,
+        callback)
 
-    )
+    else
+      print "rendered_contents:", rendered_contents
+      callback(rendered_contents)
 
 render_file = (file) ->
   extension = path.extname(file).replace('.', '')

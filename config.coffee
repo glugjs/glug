@@ -14,11 +14,15 @@ module.exports =
 
     slm: true
 
+    'uglify-js': true
+
     autoprefixer: true
 
     # 'clean-css': true
 
-    'html-minifier': true
+    'html-minifier':
+      collapseWhitespace: true
+      collapseInlineTagWhitespace: true
 
     'markdown-it':
       highlight: true
@@ -37,8 +41,8 @@ module.exports =
       #   'rupture'
       #   'axis'
       # ]
-    pug:
-      filename: 'app/views/'
+    # pug:
+    #   filename: 'app/views/'
     'coffee-script': {}
 
   server:
