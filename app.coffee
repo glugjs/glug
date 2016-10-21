@@ -122,7 +122,7 @@ print 'making file list'
 
 bs_options = merge({
   server: output_dir
-}, config.browsersync)
+}, config.server)
 
 bs.init(bs_options)
 
@@ -139,7 +139,7 @@ render = (contents, input_format, settings={}, callback) ->
 
     renderer_names = transformers_for input_format
 
-    json renderer_names
+    # json renderer_names
 
     # print "renderer: #{renderer_name}, input: #{input_format}, output: #{output_format}"
 
