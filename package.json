@@ -1,9 +1,10 @@
 {
   "name": "glug",
   "description": "A static site generator based on JSTransformers",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "keywords": [
-    "JSTransformers"
+    "JSTransformers",
+    "Static Site"
   ],
   "bin": {
     "glug": "./bin/glug"
