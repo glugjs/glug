@@ -1,9 +1,9 @@
-console.log 'script started'
+#!/usr/bin/env coffee
 
 base_path = process.cwd()
 
-console.log base_path
-
+require('app-module-path').addPath("#{base_path}/node_modules")
+program = require('commander')
 fs = require('graceful-fs')
 path = require('path')
 chokidar = require('chokidar')
@@ -14,15 +14,77 @@ config = require("#{base_path}/config")
 b_sync = require('browser-sync')
 hljs = undefined
 
-#
-console.log('done with requires')
+tfunk = require("tfunk")
 
-bs = b_sync.create()
+log = () ->
+
+  args = Array::slice.call(arguments)
+
+  if args[0] and args[1] and args[2]
+    sender = args[0]
+    type = args[1]
+    strings = args[2..]
+
+  log_types = ['log', 'warn', 'error', 'debug']
+
+  if args[0] and args[1]
+    strings = args[1..]
+
+    if log_types.includes args[0]
+      type = args[0]
+
+    else
+      sender = args[0]
+
+  else
+    strings = args[0..]
+
+  type ||= 'log'
+  sender ||= 'glug'
+
+  string = strings.join(' ')
+
+  switch sender
+    when 'glug'
+      color = 'green'
+    else
+      color = 'yellow'
+
+  prefix = "[{#{color}:#{sender}}]"
+
+  switch type
+    when 'log'
+      color = 'gray'
+    when 'warn'
+      color = 'yellow'
+    when 'error'
+      color = 'red'
+    when 'debug'
+      color = 'blue'
+    else
+      color = 'gray'
+
+  prefix += "[{#{color}:#{type}}] "
+
+  return tfunk(prefix + string)
+
+program
+  .option('-v, --verbose', 'print more output')
+  .parse(process.argv)
 
 print = console.log
 
-json = (data) ->
-  print JSON.stringify(data, null, 2)
+info = () ->
+
+debug = () ->
+  if program.verbose?
+    print log 'debug', arguments...
+
+console.log 'script started'
+
+console.log('done with requires')
+
+bs = b_sync.create()
 
 merge = ->
   new_object = {}
@@ -32,8 +94,7 @@ merge = ->
   new_object
 
 write_file = (path, contents) ->
-  # print "About to write #{path}"
-  # print "Writing #{contents["body"]} to #{path}"
+  debug "About to write to #{path}"
 
   fs.writeFile path, contents, (err) ->
     if err
@@ -60,10 +121,10 @@ renderers = {}
 
 print 'about to require jstransformers'
 for name, options of transformers
-  print "require(\"jstransformer-#{name}\")"
+  debug "Requiring JSTransformer:", name
 
   try
-    renderers[name] = transformer(config[name])
+    renderers[name] = transformer(require("jstransformer-#{name}"))
 
   catch error
     throw "#{error}\n\nTry running `npm install --save jstransformer-#{name}`"
@@ -139,9 +200,9 @@ render = (contents, input_format, settings={}, callback) ->
 
     renderer_names = transformers_for input_format
 
-    # json renderer_names
+    debug renderer_names
 
-    # print "renderer: #{renderer_name}, input: #{input_format}, output: #{output_format}"
+    debug "renderer: #{renderer_name}, input: #{input_format}, output: #{output_format}"
 
     default_transformers_config =
       stylus:
@@ -152,13 +213,13 @@ render = (contents, input_format, settings={}, callback) ->
     rendered_contents = contents
 
     for renderer_name in renderer_names
-      print "Using renderer #{renderer_name}"
+      debug renderer_name, 'rendering'
       renderer = renderers[renderer_name]
       renderer_config = transformers[renderer_name]
 
       output_format = renderer.outputFormat
 
-      renderer_config = merge(settings, renderer_config, {filename: file}, frontmatter)
+      renderer_config = merge(settings, renderer_config, frontmatter)
 
       rendered_contents = renderer.render(rendered_contents, renderer_config).body
 
@@ -166,7 +227,7 @@ render = (contents, input_format, settings={}, callback) ->
       frontmatter.layout ||= config.default_layout || 'layout'
 
     if frontmatter.layout? and not renderer_config.is_layout
-      # print 'layout is', frontmatter.layout
+      debug 'layout is', frontmatter.layout
       layout_location = "#{input_dir}/#{config.views_dir}/#{frontmatter.layout}.#{config.layout_extension}"
       layout_content = fs.readFileSync layout_location, { encoding: 'utf8' }
 
@@ -181,7 +242,6 @@ render = (contents, input_format, settings={}, callback) ->
         callback)
 
     else
-      # print "rendered_contents:", rendered_contents
       callback(rendered_contents)
 
 render_file = (file) ->
@@ -198,33 +258,37 @@ render_file = (file) ->
   new_name = basename + new_extension
   new_path = path.join(output_dir, new_name)
 
-  print "Rendering #{new_path}"
+  debug "Rendering #{new_path}"
 
   fs.readFile file, { encoding: 'utf8' }, (err, text) ->
 
     if err
       throw err
 
-    render(text, extension, {}, (rendered_contents) ->
+    render(text, extension, {filename: file}, (rendered_contents) ->
       write_file(new_path, rendered_contents)
     )
 
   return new_path
 
-print 'about to start looping through files and rendering them'
-for file in files
-  render_file(file)
-
 chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-  if event is 'change'
+  debug event, file
+  if event is 'change' or event is 'remove' or event is 'add'
     files_to_reload = [file]
 
+    if path.basename(file)[0] is '_'
+      file_type = path.extname(file)
+      debug "#{file} is a #{file_type} partial"
+      for other_file in files
+        if path.extname(other_file) is file_type
+          files_to_reload.push other_file
+
     if file.includes('layout')
-      for file in files
-        files_to_reload.push file
+      for other_file in files
+        files_to_reload.push other_file
 
     for file in files_to_reload
       output_file = render_file(file).replace(output_dir + '/', '')
       bs.reload(output_file)
 
-print 'script ended'
+debug 'script ended'

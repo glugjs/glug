@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
-require('coffee-script/register')
-var cli = require('../app.coffee')
-var pkg = require('../package.json')
-var notifier = require('update-notifier')
+var program = require('commander')
 
-// new version notification
-notifier({ pkg: pkg }).notify()
+program
+
+  .version('0.0.5')
+
+  .command('watch [directory]', 'start a server')
+
+  .command('compile [directory]', 'build the project')
+
+  .parse(process.argv)
