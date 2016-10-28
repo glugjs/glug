@@ -1,0 +1,99 @@
+code::before {
+  display: block;
+  font-family: lato, sans-serif;
+  font-size: 20px;
+  padding: 0 0 10px 0;
+}
+code.language-coffee::before {
+  content: 'CoffeeScript';
+}
+code.language-coffeescript::before {
+  content: 'CoffeeScript';
+}
+code.language-ruby::before {
+  content: 'Ruby';
+}
+code.language-rb::before {
+  content: 'Ruby';
+}
+code.language-python::before {
+  content: 'Python';
+}
+code.language-py::before {
+  content: 'Python';
+}
+code.language-javascript::before {
+  content: 'JavaScript';
+}
+code.language-js::before {
+  content: 'JavaScript';
+}
+code.language-stylus::before {
+  content: 'Stylus';
+}
+code.language-styl::before {
+  content: 'Stylus';
+}
+pre code {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  background: #002b36;
+  color: #839496;
+  border-radius: 5px;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #586e75;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  color: #859900;
+}
+.hljs-number,
+.hljs-string,
+.hljs-meta .hljs-meta-string,
+.hljs-literal,
+.hljs-doctag,
+.hljs-regexp {
+  color: #2aa198;
+}
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #268bd2;
+}
+.hljs-attribute,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title,
+.hljs-type {
+  color: #b58900;
+}
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst,
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-link {
+  color: #cb4b16;
+}
+.hljs-built_in,
+.hljs-deletion {
+  color: #d30101;
+}
+.hljs-formula {
+  background: #073642;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: bold;
+}

@@ -10,7 +10,6 @@ chokidar = require('chokidar')
 transformer = require('jstransformer')
 recursive = require('fs-readdir-recursive')
 matter = require('gray-matter')
-config = require("#{base_path}/config")
 b_sync = require('browser-sync')
 hljs = undefined
 
@@ -20,14 +19,14 @@ log = () ->
 
   args = Array::slice.call(arguments)
 
-  if args[0] and args[1] and args[2]
-    sender = args[0]
-    type = args[1]
-    strings = args[2..]
-
   log_types = ['log', 'warn', 'error', 'debug']
 
-  if args[0] and args[1]
+  if args[0] and args[1] and args[2]
+    type = args[0]
+    sender = args[1]
+    strings = args[2..]
+
+  else if args[0] and args[1]
     strings = args[1..]
 
     if log_types.includes args[0]
@@ -80,10 +79,13 @@ debug = () ->
   if program.verbose?
     print log 'debug', arguments...
 
-console.log 'script started'
+config_path = "#{base_path}/config"
 
-console.log('done with requires')
-
+try
+  config = require(config_path)
+catch error
+  throw log 'error', "config file not found at #{config_path}"
+  
 bs = b_sync.create()
 
 merge = ->
@@ -94,7 +96,7 @@ merge = ->
   new_object
 
 write_file = (path, contents) ->
-  debug "About to write to #{path}"
+  debug "about to write #{path}"
 
   fs.writeFile path, contents, (err) ->
     if err
@@ -119,9 +121,9 @@ transformers = merge(transformers, config.transformers)
 
 renderers = {}
 
-print 'about to require jstransformers'
+debug 'about to require jstransformers'
 for name, options of transformers
-  debug "Requiring JSTransformer:", name
+  debug "Requiring JSTransformer:" + name
 
   try
     renderers[name] = transformer(require("jstransformer-#{name}"))
@@ -129,7 +131,7 @@ for name, options of transformers
   catch error
     throw "#{error}\n\nTry running `npm install --save jstransformer-#{name}`"
 
-print 'done requiring jstransformers'
+debug 'done requiring jstransformers'
 
 paths = {}
 
@@ -165,9 +167,6 @@ transformers_for = (filetype) ->
     # print "#{filetype} => #{last_extension}"
   return renderer_names
 
-print 'starting making file list'
-
-
 all_files = recursive(input_dir)
 
 all_files = all_files.map (file) ->
@@ -179,7 +178,7 @@ for file in all_files
   if path.basename(file)[0] isnt '_'
     files.push(file)
 
-print 'making file list'
+debug 'making file list'
 
 bs_options = merge({
   server: output_dir
@@ -192,6 +191,8 @@ rm_dir output_dir
 unless fs.existsSync(output_dir)
   fs.mkdir(output_dir)
 
+log 'info', 'rendering files'
+
 render = (contents, input_format, settings={}, callback) ->
     file_data = matter(contents)
 
@@ -199,10 +200,6 @@ render = (contents, input_format, settings={}, callback) ->
     frontmatter = file_data.data
 
     renderer_names = transformers_for input_format
-
-    debug renderer_names
-
-    debug "renderer: #{renderer_name}, input: #{input_format}, output: #{output_format}"
 
     default_transformers_config =
       stylus:
@@ -213,7 +210,6 @@ render = (contents, input_format, settings={}, callback) ->
     rendered_contents = contents
 
     for renderer_name in renderer_names
-      debug renderer_name, 'rendering'
       renderer = renderers[renderer_name]
       renderer_config = transformers[renderer_name]
 
@@ -227,7 +223,7 @@ render = (contents, input_format, settings={}, callback) ->
       frontmatter.layout ||= config.default_layout || 'layout'
 
     if frontmatter.layout? and not renderer_config.is_layout
-      debug 'layout is', frontmatter.layout
+      debug "layout is #{frontmatter.layout}"
       layout_location = "#{input_dir}/#{config.views_dir}/#{frontmatter.layout}.#{config.layout_extension}"
       layout_content = fs.readFileSync layout_location, { encoding: 'utf8' }
 
@@ -258,7 +254,13 @@ render_file = (file) ->
   new_name = basename + new_extension
   new_path = path.join(output_dir, new_name)
 
-  debug "Rendering #{new_path}"
+  input_format = extension
+  last_renderer = renderer_names[renderer_names.length - 1]
+  output_format = renderers[last_renderer].outputFormat
+
+  list_of_renderers = renderer_names.join(' => ')
+  debug ".#{input_format} => #{list_of_renderers} => .#{output_format}"
+
 
   fs.readFile file, { encoding: 'utf8' }, (err, text) ->
 
@@ -272,7 +274,7 @@ render_file = (file) ->
   return new_path
 
 chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-  debug event, file
+  debug "#{event} #{file}"
   if event is 'change' or event is 'remove' or event is 'add'
     files_to_reload = [file]
 

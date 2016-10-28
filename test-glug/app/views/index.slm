@@ -1,0 +1,13 @@
+h1 Hello there!
+
+p This is some text!!
+
+p Hi again!
+
+label for='fav-col' What is your favorite color?
+
+select#fav-col
+  option Pizza
+  option Bananas
+  option Purple
+  option Blue
