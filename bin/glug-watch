@@ -6,14 +6,16 @@ require('app-module-path').addPath("#{base_path}/node_modules")
 program = require('commander')
 fs = require('graceful-fs')
 path = require('path')
+mkdirp = require('mkdirp')
 chokidar = require('chokidar')
 transformer = require('jstransformer')
 recursive = require('fs-readdir-recursive')
+anymatch = require('anymatch')
 matter = require('gray-matter')
 b_sync = require('browser-sync')
 hljs = undefined
 
-tfunk = require("tfunk")
+tfunk = require('tfunk')
 
 log = () ->
 
@@ -79,12 +81,12 @@ debug = () ->
   if program.verbose?
     print log 'debug', arguments...
 
-config_path = "#{base_path}/config"
+config_path = "#{base_path}/glug-config.coffee"
 
 try
   config = require(config_path)
 catch error
-  throw log 'error', "config file not found at #{config_path}"
+  throw log 'error', "config file not found at #{config_path}.coffee"
   
 bs = b_sync.create()
 
@@ -95,10 +97,11 @@ merge = ->
       new_object[key] = object[key]
   new_object
 
-write_file = (path, contents) ->
-  debug "about to write #{path}"
+write_file = (file, contents) ->
+  debug "about to write #{file}"
 
-  fs.writeFile path, contents, (err) ->
+  mkdirp path.dirname(file)
+  fs.writeFile file, contents, (err) ->
     if err
       throw err
 
@@ -108,7 +111,7 @@ rm_dir = (path) ->
       curPath = path + '/' + file
       if fs.lstatSync(curPath).isDirectory()
         # recurse
-        deleteFolderRecursive curPath
+        rm_dir curPath
       else
         # delete file
         fs.unlinkSync curPath
@@ -123,13 +126,17 @@ renderers = {}
 
 debug 'about to require jstransformers'
 for name, options of transformers
-  debug "Requiring JSTransformer:" + name
-
+  debug "Requiring JSTransformer: #{name}"
   try
     renderers[name] = transformer(require("jstransformer-#{name}"))
-
   catch error
-    throw "#{error}\n\nTry running `npm install --save jstransformer-#{name}`"
+    throw log 'error',
+      """
+      #{error}
+  
+      Try running `npm install --save jstransformer-#{name}`
+      or `yarn add jstransformer-#{name}`
+      """.replace('Error: ', '')
 
 debug 'done requiring jstransformers'
 
@@ -138,7 +145,7 @@ paths = {}
 input_dir  = config.input_dir  || 'app'
 output_dir = config.output_dir || 'public'
 
-if config.transformers['markdown-it']? and config.transformers['markdown-it'].highlight?
+if transformers['markdown-it']? and transformers['markdown-it'].highlight?
   hljs = require('highlight.js')
   transformers['markdown-it'].highlight = (str, lang) ->
     if lang and hljs.getLanguage(lang)
@@ -149,36 +156,74 @@ if config.transformers['markdown-it']? and config.transformers['markdown-it'].hi
 
 transformers_for = (filetype) ->
   renderer_names = []
-  for name, transformer of transformers
-    renderer = renderers[name]
-    if renderer.inputFormats.includes(filetype)
-      renderer_names.push name
+  if config.files? and config.files[filetype]?
+    return config['files'][filetype]
+  else
+    for name, transformer of transformers
+      renderer = renderers[name]
+      if renderer.inputFormats.includes(filetype)
+        renderer_names.push name
 
-  if renderer_names.length is 0
-    # print 'renderer_names is empty'
-    return []
+    if renderer_names.length is 0
+      debug 'renderer_names is empty'
+      return []
 
-  last_renderer_name = renderer_names[renderer_names.length - 1]
-  last_extension = renderers[last_renderer_name].outputFormat
-  if last_extension isnt filetype
-    for new_renderer in transformers_for(last_extension)
-      renderer_names.push new_renderer
+    last_renderer_name = renderer_names[renderer_names.length - 1]
+    last_extension = renderers[last_renderer_name].outputFormat
+    if last_extension isnt filetype
+      for new_renderer in transformers_for(last_extension)
+        renderer_names.push new_renderer
 
-    # print "#{filetype} => #{last_extension}"
   return renderer_names
 
 all_files = recursive(input_dir)
 
-all_files = all_files.map (file) ->
-  path.join(input_dir, file)
+files = {}
 
-files = []
+make_file_data_for = (file) ->
+  for pipeline_name, pipeline of config.pipelines
+    files[pipeline_name] = {}
+    for tier_name, tier of pipeline
+      for glob, glob_transformers of tier
+        if typeof glob_transformers is 'string'
+          glob_transformers = [glob_transformers]
+        if anymatch(glob, file)
+          files[pipeline_name][file] = {}
+          file_ref = files[pipeline_name][file]
+          file_ref.transformers = {}
+          file_ref.transformers[tier_name] ||= []
+          file_ref.transformers[tier_name] =
+            file_ref.transformers[tier_name].concat(glob_transformers)
 
-for file in all_files
-  if path.basename(file)[0] isnt '_'
-    files.push(file)
+  input_format = path.extname(file).replace('.', '')
 
-debug 'making file list'
+  transformer_order = files[file].transformers
+  if transformer_order = {}
+    transformer_order =
+      first: [ 'copy' ]
+    file_ref.transformers = transformer_order
+    new_name = file
+
+  else
+    tier_names = Object.keys(transformer_order)
+    last_tier = transformer_order[tier_names[tier_names.length - 1]]
+    last_renderer = last_tier[last_tier.length - 1]
+    output_format = renderers[last_renderer].outputFormat
+    new_name = file.replace(input_format, output_format).replace(output_dir, '')
+
+  files[file] = merge files[file],
+    is_rendered: false
+    new_path: path.join(output_dir, new_name)
+    input_format: input_format
+    output_format: output_format
+
+make_file_list = ->
+  debug 'making file list'
+  promises = []
+  for file in all_files
+    promises.push make_file_data_for(file)
+
+  return Promise.all(promises)
 
 bs_options = merge({
   server: output_dir
@@ -191,15 +236,15 @@ rm_dir output_dir
 unless fs.existsSync(output_dir)
   fs.mkdir(output_dir)
 
-log 'info', 'rendering files'
-
-render = (contents, input_format, settings={}, callback) ->
+render = (filename, contents, renderer_names, settings={}) ->
+  new Promise (resolve, reject) =>
     file_data = matter(contents)
 
     contents = file_data.content
     frontmatter = file_data.data
 
-    renderer_names = transformers_for input_format
+    if renderer_names is 'copy'
+      resolve(contents)
 
     default_transformers_config =
       stylus:
@@ -207,90 +252,107 @@ render = (contents, input_format, settings={}, callback) ->
           input_dir
         ]
 
-    rendered_contents = contents
+    renderer_name = renderer_names[0]
 
-    for renderer_name in renderer_names
-      renderer = renderers[renderer_name]
-      renderer_config = transformers[renderer_name]
+    debug "#{filename}: rendering with #{renderer_name}"
+    renderer = renderers[renderer_name]
+    renderer_config = transformers[renderer_name]
 
-      output_format = renderer.outputFormat
+    output_format = renderer.outputFormat
 
-      renderer_config = merge(settings, renderer_config, frontmatter)
+    renderer_config = merge(settings, renderer_config, frontmatter)
 
-      rendered_contents = renderer.render(rendered_contents, renderer_config).body
+    renderer.renderAsync(contents, renderer_config)
+      .then (rendered_contents) =>
+        debug "#{filename}: finished rendering with #{renderer_name}"
+        rendered_contents = rendered_contents.body
+        renderers_left = renderer_names[1..]
+        if renderers_left.length is 0 or renderers_left is undefined
+          resolve(rendered_contents)
+        else
+          render(filename, rendered_contents, renderers_left)
+            .then (final_contents) =>
+              resolve(final_contents)
+            .catch (err) =>
+              reject log 'error', renderer_names[0], '\n' + err
+              # throw log 'error', renderer_names[0], '\n' + err
+      .catch (err) =>
+        reject log 'error', '\n' + err
 
-    if output_format is 'html'
-      frontmatter.layout ||= config.default_layout || 'layout'
+render_tier = (file, text) ->
+  console.log "render_tier('#{file}')"
 
-    if frontmatter.layout? and not renderer_config.is_layout
-      debug "layout is #{frontmatter.layout}"
-      layout_location = "#{input_dir}/#{config.views_dir}/#{frontmatter.layout}.#{config.layout_extension}"
-      layout_content = fs.readFileSync layout_location, { encoding: 'utf8' }
+  new Promise (resolve, reject) =>
 
-      layout_config = merge(renderer_config, 
-        contents: rendered_contents
-        is_layout: true
-      )
+    file_data = files[file]
 
-      new_contents = render(layout_content,
-        config.layout_extension,
-        layout_config,
-        callback)
+    tier = 'syntax'
 
-    else
-      callback(rendered_contents)
+    "render('#{file}', '#{text}', '#{file_data.transformers[tier]}', opts)"
+    render(file, text, file_data.transformers[tier],
+      filename: path.join(input_dir, file), basedir: output_dir)
+      .then (rendered_contents) =>
+        write_file(file_data.new_path, rendered_contents)
+        resolve()
+      .catch (err) ->
+        reject err
 
-render_file = (file) ->
-  extension = path.extname(file).replace('.', '')
+render_file_tier = (file) ->
+  console.log "render_file_tier('#{file}')"
 
-  renderer_names = transformers_for extension
+  new Promise (resolve, reject) =>
 
-  renderer_name = renderer_names[0]
+    file_data = files[file]
 
-  renderer = renderers[renderer_name]
+    if file_data.is_rendered
+      resolve(file_data.new_path)
 
-  new_extension = renderer.outputFormat
-  basename = path.basename(file, extension)
-  new_name = basename + new_extension
-  new_path = path.join(output_dir, new_name)
+    console.log JSON.stringify file_data.transformers, null, 2
+    # list_of_renderers = file_data.transformers.join(' => ')
+    # debug ".#{file_data.input_format}
+    #   => #{list_of_renderers}
+    #   => .#{file_data.output_format}"
 
-  input_format = extension
-  last_renderer = renderer_names[renderer_names.length - 1]
-  output_format = renderers[last_renderer].outputFormat
+    fs.readFile path.join(input_dir, file), { encoding: 'utf8' }, (err, text) =>
 
-  list_of_renderers = renderer_names.join(' => ')
-  debug ".#{input_format} => #{list_of_renderers} => .#{output_format}"
+      if err
+        reject err
 
+      render_tier(file, text)
+        .then =>
+          file_data.is_rendered = true
+          resolve()
+        .catch (err) =>
+          reject err
 
-  fs.readFile file, { encoding: 'utf8' }, (err, text) ->
+render_all = ->
+  new Promise (resolve, reject) ->
+    # pipeline_promises = []
+    # for pipeline of files
+    #   file_promises = []
+    #   for file of files
+    #     file_promises.push render_file_tier(file)
+    #   Promise.all(promises)
+    #     .then =>
+    #       resolve('hi')
+    #     .catch (err) =>
+    #       reject err
 
-    if err
-      throw err
+make_file_list()
+  .catch (err) ->
+    throw err
+  .then ->
+    console.log JSON.stringify files, null, 2
 
-    render(text, extension, {filename: file}, (rendered_contents) ->
-      write_file(new_path, rendered_contents)
-    )
-
-  return new_path
-
-chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-  debug "#{event} #{file}"
-  if event is 'change' or event is 'remove' or event is 'add'
-    files_to_reload = [file]
-
-    if path.basename(file)[0] is '_'
-      file_type = path.extname(file)
-      debug "#{file} is a #{file_type} partial"
-      for other_file in files
-        if path.extname(other_file) is file_type
-          files_to_reload.push other_file
-
-    if file.includes('layout')
-      for other_file in files
-        files_to_reload.push other_file
-
-    for file in files_to_reload
-      output_file = render_file(file).replace(output_dir + '/', '')
-      bs.reload(output_file)
+    render_all().then ->
+      chokidar.watch(input_dir, {}).on 'all', (event, file) ->
+        if event is 'change' or event is 'remove' or event is 'add'
+          file = file.replace input_dir + '/', ''
+          files[file].is_rendered = false
+          render_all()
+            .then (files_changed) =>
+              bs.reload(files_changed)
+            .catch (err) =>
+              throw err
 
 debug 'script ended'
