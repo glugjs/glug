@@ -2,7 +2,11 @@ h =
   next: (object, current) ->
     array = Object.keys(object)
     next_key = array[array.indexOf(current) + 1]
-    object[next_key]
+    value = {}
+    value.data = object[next_key]
+    value.name = next_key
+    if value.data?
+      return value
   first: (object) ->
     if typeof object is 'object'
       value = {}
@@ -102,12 +106,15 @@ h =
     new_object
 
   write_file: (file, contents) ->
-    debug "about to write #{file}"
+    new Promise (resolve, reject) =>
+      h.debug "about to write to #{file}"
 
-    mkdirp path.dirname(file)
-    fs.writeFile file, contents, (err) ->
-      if err
-        throw err
+      mkdirp path.dirname(file)
+      fs.writeFile file, contents, (err) =>
+        if err
+          console.error err
+          return reject err
+        resolve()
 
   rm_dir: (path) ->
     if fs.existsSync(path)
@@ -115,7 +122,7 @@ h =
         curPath = path + '/' + file
         if fs.lstatSync(curPath).isDirectory()
           # recurse
-          rm_dir curPath
+          h.rm_dir curPath
         else
           # delete file
           fs.unlinkSync curPath

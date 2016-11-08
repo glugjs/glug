@@ -85,6 +85,9 @@ generate_file_list = ->
     h.debug 'Making file list...'
     all_files = recursive(input_dir)
     for file in all_files
+      files[file] = {}
+      files[file].is_rendered = false
+      files[file].in_format = path.extname(file).replace('.', '')
       for pipeline_name, pipeline of config.pipelines
         for tier_name, tier of pipeline
           for glob, transforms of tier
@@ -94,17 +97,23 @@ generate_file_list = ->
               transforms = [transforms]
 
             if anymatch(glob, file)
+              last_transformer = h.last(transforms).data
+              files[file].out_format = transformers[last_transformer].outputFormat
               pipelines[pipeline_name] ||= {}
               pipelines[pipeline_name][tier_name] ||= {}
               pipelines[pipeline_name][tier_name][file] ||= {}
               file_ref = pipelines[pipeline_name][tier_name][file]
               file_ref.transforms ||= []
               file_ref.transforms = file_ref.transforms.concat transforms
-      files[file] = {}
-      files[file].is_rendered = false
 
-    h.debug h.json files
-    h.debug h.json pipelines
+      files[file].out_format ||= files[file].in_format
+      files[file].out_path = file.replace(
+        files[file].in_format,
+        files[file].out_format
+      )
+
+    h.debug "Files: #{h.json files}"
+    h.debug "Pipelines: #{h.json pipelines}"
     h.debug 'File list is finished'
     resolve()
 
@@ -131,43 +140,124 @@ start_watcher = ->
         #   .catch (err) =>
         #     reject err
 
-render_file_tier = (file, tier) ->
+render = (filename, contents, renderer_names, settings={}) ->
   new Promise (resolve, reject) =>
-    h.debug "file: #{file}"
-    # h.debug "file: #{file}, data: #{h.json tier.data[file]}"
-    resolve("hiya from render_file_tier with #{file}")
+    bad_things = ["", undefined, null]
 
-render_all_in_tier = (pipeline, tier) ->
-  file_promises = []
-  for file of tier.data
-    unless file.is_rendered
-      console.log "tier is #{tier.name}"
-      promise = render_file_tier(file, tier)
-      promise.then =>
-        if pipeline[tier.name] is h.last(pipeline).name
-          h.debug "Got through last tier"
-          files[file].is_rendered = true
+    if bad_things.includes contents
+      h.warn("I want to render #{filename} with #{renderer_names[0]}, but I can't because #{filename} is #{contents}")
+      return resolve("")
+
+    if typeof contents isnt 'string'
+      h.warn("The contents of #{filename} is of type #{typeof contents}, and is:
+        #{h.json contents}")
+
+    file_data = matter(contents)
+
+    contents = file_data.content
+    frontmatter = file_data.data
+
+    if renderer_names is 'copy'
+      return resolve(contents)
+
+    default_transformers_config =
+      stylus:
+        paths: [
+          input_dir
+        ]
+
+    renderer_name = renderer_names[0]
+
+    renderer = transformers[renderer_name]
+
+    output_format = renderer.outputFormat
+
+    renderer_config = h.merge(settings, frontmatter)
+
+    h.debug "#{filename}: {red:#{renderer_name}}"
+
+    renderer.renderAsync(contents, renderer_config)
+      .then (rendered_contents) =>
+        h.debug "#{filename}: finished rendering with #{renderer_name}"
+        rendered_contents = rendered_contents.body
+        renderers_left = renderer_names[1..]
+        if renderers_left.length is 0 or renderers_left is undefined
+          resolve(rendered_contents)
         else
-          h.debug "more tiers to go"
-          render_all_in_tier(pipeline, h.next(pipeline, tier.name))
-      file_promises.push promise
-  Promise.all(file_promises)
-    # .then =>
-    #   render_all_in_tier
+          render(filename, rendered_contents, renderers_left)
+            .then (final_contents) =>
+              resolve(final_contents)
+            .catch reject
+      .catch reject
+
+render_file_tier = (file, tier, first = true) ->
+  new Promise (resolve, reject) =>
+    h.debug "render_file_tier('#{file}', '#{tier.name}')"
+
+    file_data = files[file]
+
+    # if file_data.is_rendered
+    #   return resolve()
+
+    # console.log JSON.stringify file_data.transformers, null, 2
+
+    h.debug "First: #{first}"
+    if first
+      file_path = path.join(input_dir, file)
+    else
+      file_path = path.join(output_dir, files[file].out_path)
+
+    fs.readFile file_path, { encoding: 'utf8' }, (err, text) =>
+
+      if err
+        reject err
+
+      render(file, text, tier.data[file].transforms,
+        filename: file_path, basedir: output_dir)
+        .then (rendered_contents) =>
+          # h.debug "rendered_contents are #{rendered_contents}"
+          h.write_file(path.join(output_dir, file_data.out_path), rendered_contents)
+            .then resolve
+
+        .catch reject
+
+    return resolve()
+
+render_all_in_tier = (pipeline, tier, first = true) ->
+  new Promise (reject, resolve) =>
+    file_promises = []
+    for file of tier.data
+      unless file.is_rendered
+        promise = render_file_tier(file, tier, first)
+        file_promises.push promise
+        promise.catch reject
+    Promise.all(file_promises)
+      .catch reject
+      .then =>
+        h.debug "Finished tier: #{tier.name}"
+        next_tier = h.next(pipeline.data, tier.name)
+        if next_tier?
+          h.debug "more tiers to go for #{pipeline.name}"
+          render_all_in_tier(pipeline, next_tier, first = false)
+        else
+          h.debug "Got through last tier for #{pipeline.name}"
+          files[file].is_rendered = true
+          resolve()
 
 render_all = ->
   pipeline_promises = []
   for pipeline_name, pipeline of pipelines
     h.debug h.bold "#{pipeline_name} Pipeline"
-    render_all_in_tier(pipeline, h.first(pipeline))
+    render_all_in_tier({ name: pipeline_name, data: pipeline }, h.first(pipeline))
   Promise.all(pipeline_promises)
 
 require_dependencies()
-  .then -> setup_commands()
-  .then -> load_all_transformers()
-  .then -> generate_file_list()
-  .then -> prepare_output_dir()
-  .then -> start_watcher()
+  .then setup_commands
+  .then load_all_transformers
+  .then generate_file_list
+  .then prepare_output_dir
+  .then render_all
+  # .then start_watcher
   .catch (err) -> throw err
 
 # make_file_data_for = (file) ->
@@ -213,48 +303,6 @@ require_dependencies()
 
 # bs.init(bs_options)
 
-# render = (filename, contents, renderer_names, settings={}) ->
-#   new Promise (resolve, reject) =>
-#     file_data = matter(contents)
-
-#     contents = file_data.content
-#     frontmatter = file_data.data
-
-#     if renderer_names is 'copy'
-#       resolve(contents)
-
-#     default_transformers_config =
-#       stylus:
-#         paths: [
-#           input_dir
-#         ]
-
-#     renderer_name = renderer_names[0]
-
-#     debug "#{filename}: rendering with #{renderer_name}"
-#     renderer = renderers[renderer_name]
-#     renderer_config = transformers[renderer_name]
-
-#     output_format = renderer.outputFormat
-
-#     renderer_config = merge(settings, renderer_config, frontmatter)
-
-#     renderer.renderAsync(contents, renderer_config)
-#       .then (rendered_contents) =>
-#         debug "#{filename}: finished rendering with #{renderer_name}"
-#         rendered_contents = rendered_contents.body
-#         renderers_left = renderer_names[1..]
-#         if renderers_left.length is 0 or renderers_left is undefined
-#           resolve(rendered_contents)
-#         else
-#           render(filename, rendered_contents, renderers_left)
-#             .then (final_contents) =>
-#               resolve(final_contents)
-#             .catch (err) =>
-#               reject log 'error', renderer_names[0], '\n' + err
-#               # throw log 'error', renderer_names[0], '\n' + err
-#       .catch (err) =>
-#         reject log 'error', '\n' + err
 
 # render_tier = (file, text) ->
 #   console.log "render_tier('#{file}')"
