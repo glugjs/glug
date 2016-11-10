@@ -3,6 +3,8 @@
 base_path = process.cwd()
 
 require('app-module-path').addPath("#{base_path}/node_modules")
+Promise = require('bluebird')
+console.log Promise
 
 async_require = ->
   if arguments[0] and arguments[1]
@@ -187,12 +189,13 @@ render = (filename, contents, renderer_names, settings={}) ->
           render(filename, rendered_contents, renderers_left)
             .then (final_contents) =>
               resolve(final_contents)
-            .catch reject
-      .catch reject
+            .catch (err) => reject "Error from sub-render: #{err}"
+      .catch (err) => reject "Error from render: #{renderer_name}: #{err}"
 
 render_file_tier = (file, tier, first = true) ->
   new Promise (resolve, reject) =>
     h.debug "render_file_tier('#{file}', '#{tier.name}')"
+    return reject("Fake error in render_file_tier")
 
     file_data = files[file]
 
@@ -207,10 +210,12 @@ render_file_tier = (file, tier, first = true) ->
     else
       file_path = path.join(output_dir, files[file].out_path)
 
+    h.debug "Looking for file at #{file_path}"
     fs.readFile file_path, { encoding: 'utf8' }, (err, text) =>
+      h.debug "Found file at #{file_path}"
 
       if err
-        reject err
+        return reject err
 
       render(file, text, tier.data[file].transforms,
         filename: file_path, basedir: output_dir)
@@ -221,8 +226,6 @@ render_file_tier = (file, tier, first = true) ->
 
         .catch reject
 
-    return resolve()
-
 render_all_in_tier = (pipeline, tier, first = true) ->
   new Promise (reject, resolve) =>
     file_promises = []
@@ -230,26 +233,41 @@ render_all_in_tier = (pipeline, tier, first = true) ->
       unless file.is_rendered
         promise = render_file_tier(file, tier, first)
         file_promises.push promise
-        promise.catch reject
+        promise.catch (err) ->
+          h.info "got err in render_all_in_tier: #{err}"
+          return reject err
     Promise.all(file_promises)
-      .catch reject
+      .catch (err) ->
+        # h.debug "got error in render_all_in_tier"
+        reject err
+      # .catch reject
       .then =>
         h.debug "Finished tier: #{tier.name}"
         next_tier = h.next(pipeline.data, tier.name)
         if next_tier?
           h.debug "more tiers to go for #{pipeline.name}"
           render_all_in_tier(pipeline, next_tier, first = false)
+            .catch (err) ->
+              h.info "err in sub render_all_in_tier: #{err}"
+              return reject err
+            .then resolve
         else
           h.debug "Got through last tier for #{pipeline.name}"
           files[file].is_rendered = true
           resolve()
 
 render_all = ->
-  pipeline_promises = []
-  for pipeline_name, pipeline of pipelines
-    h.debug h.bold "#{pipeline_name} Pipeline"
-    render_all_in_tier({ name: pipeline_name, data: pipeline }, h.first(pipeline))
-  Promise.all(pipeline_promises)
+  new Promise (resolve, reject) ->
+    pipeline_promises = []
+    for pipeline_name, pipeline of pipelines
+      h.debug h.bold "#{pipeline_name} Pipeline"
+      render_all_in_tier(
+        { name: pipeline_name, data: pipeline },
+        h.first(pipeline))
+          .catch (err) ->
+            h.info "got error in render_all"
+            reject err
+    Promise.all(pipeline_promises)
 
 require_dependencies()
   .then setup_commands
@@ -259,128 +277,3 @@ require_dependencies()
   .then render_all
   # .then start_watcher
   .catch (err) -> throw err
-
-# make_file_data_for = (file) ->
-#   for pipeline_name, pipeline of config.pipelines
-#     files[pipeline_name] = {}
-#     for tier_name, tier of pipeline
-#       for glob, glob_transformers of tier
-#         if typeof glob_transformers is 'string'
-#           glob_transformers = [glob_transformers]
-#         if anymatch(glob, file)
-#           files[pipeline_name][file] = {}
-#           file_ref = files[pipeline_name][file]
-#           file_ref.transformers = {}
-#           file_ref.transformers[tier_name] ||= []
-#           file_ref.transformers[tier_name] =
-#             file_ref.transformers[tier_name].concat(glob_transformers)
-
-#   input_format = path.extname(file).replace('.', '')
-
-#   transformer_order = files[file].transformers
-#   if transformer_order = {}
-#     transformer_order =
-#       first: [ 'copy' ]
-#     file_ref.transformers = transformer_order
-#     new_name = file
-
-#   else
-#     tier_names = Object.keys(transformer_order)
-#     last_tier = transformer_order[tier_names[tier_names.length - 1]]
-#     last_renderer = last_tier[last_tier.length - 1]
-#     output_format = renderers[last_renderer].outputFormat
-#     new_name = file.replace(input_format, output_format).replace(output_dir, '')
-
-#   files[file] = merge files[file],
-#     is_rendered: false
-#     new_path: path.join(output_dir, new_name)
-#     input_format: input_format
-#     output_format: output_format
-
-# bs_options = merge({
-#   server: output_dir
-# }, config.server)
-
-# bs.init(bs_options)
-
-
-# render_tier = (file, text) ->
-#   console.log "render_tier('#{file}')"
-
-#   new Promise (resolve, reject) =>
-
-#     file_data = files[file]
-
-#     tier = 'syntax'
-
-#     "render('#{file}', '#{text}', '#{file_data.transformers[tier]}', opts)"
-#     render(file, text, file_data.transformers[tier],
-#       filename: path.join(input_dir, file), basedir: output_dir)
-#       .then (rendered_contents) =>
-#         write_file(file_data.new_path, rendered_contents)
-#         resolve()
-#       .catch (err) ->
-#         reject err
-
-# render_file_tier = (file) ->
-#   console.log "render_file_tier('#{file}')"
-
-#   new Promise (resolve, reject) =>
-
-#     file_data = files[file]
-
-#     if file_data.is_rendered
-#       resolve(file_data.new_path)
-
-#     console.log JSON.stringify file_data.transformers, null, 2
-#     # list_of_renderers = file_data.transformers.join(' => ')
-#     # debug ".#{file_data.input_format}
-#     #   => #{list_of_renderers}
-#     #   => .#{file_data.output_format}"
-
-#     fs.readFile path.join(input_dir, file), { encoding: 'utf8' }, (err, text) =>
-
-#       if err
-#         reject err
-
-#       render_tier(file, text)
-#         .then =>
-#           file_data.is_rendered = true
-#           resolve()
-#         .catch (err) =>
-#           reject err
-
-# render_all = ->
-#   new Promise (resolve, reject) ->
-#     # pipeline_promises = []
-#     # for pipeline of files
-#     #   file_promises = []
-#     #   for file of files
-#     #     file_promises.push render_file_tier(file)
-#     #   Promise.all(promises)
-#     #     .then =>
-#     #       resolve('hi')
-#     #     .catch (err) =>
-#     #       reject err
-
-# make_file_list()
-#   .catch (err) ->
-#     throw err
-#   .then ->
-#     console.log JSON.stringify files, null, 2
-
-#     render_all().then ->
-#       chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-#         if event is 'change' or event is 'remove' or event is 'add'
-#           file = file.replace input_dir + '/', ''
-#           files[file].is_rendered = false
-#           render_all()
-#             .then (files_changed) =>
-#               bs.reload(files_changed)
-#             .catch (err) =>
-#               throw err
-
-# debug 'script ended'
-# chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-#   if event is 'change' or event is 'remove' or event is 'add'
-#     console.log 'hi'

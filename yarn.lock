@@ -205,6 +205,20 @@ block-stream@*:
   dependencies:
     inherits "~2.0.0"
 
+bluebird:
+  version "3.4.6"
+  resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.4.6.tgz#01da8d821d87813d158967e743d5fe6c62cf8c0f"
+
+bluebird-extra:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/bluebird-extra/-/bluebird-extra-2.0.0.tgz#d343631d666d77d9ea74869687affe9623872766"
+  dependencies:
+    bluebird "^2.10.2"
+
+bluebird@^2.10.2:
+  version "2.11.0"
+  resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-2.11.0.tgz#534b9033c022c9579c56ba3b3e5a5caafbb650e1"
+
 boom@2.x.x:
   version "2.10.1"
   resolved "https://registry.yarnpkg.com/boom/-/boom-2.10.1.tgz#39c8918ceff5799f83f9492a848f625add0c766f"
@@ -1320,7 +1334,7 @@ ms@0.7.1:
   version "0.7.1"
   resolved "https://registry.yarnpkg.com/ms/-/ms-0.7.1.tgz#9cd13c03adbff25b65effde7ce864ee952017098"
 
-nan@^2.3.0:
+nan@^2.3.0, nan@>=2.0.0:
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/nan/-/nan-2.4.0.tgz#fb3c59d45fe4effe215f0b890f8adf6eb32d2232"
 
@@ -1831,6 +1845,12 @@ setprototypeof@1.0.1:
 signal-exit@^3.0.0:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-3.0.1.tgz#5a4c884992b63a7acd9badb7894c3ee9cfccad81"
+
+sleep:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/sleep/-/sleep-4.0.0.tgz#8d465f9671cbef89d5688150ff2edf9c9e6a9879"
+  dependencies:
+    nan ">=2.0.0"
 
 slide@^1.1.5:
   version "1.1.6"

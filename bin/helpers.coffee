@@ -1,4 +1,28 @@
 h =
+  to_array: (object) ->
+    array = []
+    i = 0
+
+    for key, value of object
+      array[i] = {}
+      # array[i].test = "sdfs"
+      array[i].name = key
+      array[i].data = value
+      i++
+
+    return array
+
+  each_in: (object, fn) ->
+    if typeof object is 'array'
+      for item in object
+        fn(item)
+    else
+      for item_name, item_data of object
+        item = {}
+        item.name = item_name
+        item.data = item_data
+        fn(item)
+
   next: (object, current) ->
     array = Object.keys(object)
     next_key = array[array.indexOf(current) + 1]
@@ -107,9 +131,9 @@ h =
 
   write_file: (file, contents) ->
     new Promise (resolve, reject) =>
-      h.debug "about to write to #{file}"
+      h.debug "Writing #{file}"
 
-      mkdirp path.dirname(file)
+      mkdirp.sync path.dirname(file)
       fs.writeFile file, contents, (err) =>
         if err
           console.error err
