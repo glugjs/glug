@@ -3,356 +3,264 @@
 base_path = process.cwd()
 
 require('app-module-path').addPath("#{base_path}/node_modules")
-program = require('commander')
-fs = require('graceful-fs')
-path = require('path')
-mkdirp = require('mkdirp')
-chokidar = require('chokidar')
-transformer = require('jstransformer')
-recursive = require('fs-readdir-recursive')
-anymatch = require('anymatch')
-matter = require('gray-matter')
-b_sync = require('browser-sync')
-hljs = undefined
+Promise = require('bluebird')
 
-tfunk = require('tfunk')
-
-log = () ->
-
-  args = Array::slice.call(arguments)
-
-  log_types = ['log', 'warn', 'error', 'debug']
-
-  if args[0] and args[1] and args[2]
-    type = args[0]
-    sender = args[1]
-    strings = args[2..]
-
-  else if args[0] and args[1]
-    strings = args[1..]
-
-    if log_types.includes args[0]
-      type = args[0]
-
-    else
-      sender = args[0]
-
+async_require = ->
+  if arguments[0] and arguments[1]
+    name = arguments[1]
+    alias = arguments[0]
   else
-    strings = args[0..]
+    name = arguments[0]
+    alias = arguments[0]
 
-  type ||= 'log'
-  sender ||= 'glug'
-
-  string = strings.join(' ')
-
-  switch sender
-    when 'glug'
-      color = 'green'
-    else
-      color = 'yellow'
-
-  prefix = "[{#{color}:#{sender}}]"
-
-  switch type
-    when 'log'
-      color = 'gray'
-    when 'warn'
-      color = 'yellow'
-    when 'error'
-      color = 'red'
-    when 'debug'
-      color = 'blue'
-    else
-      color = 'gray'
-
-  prefix += "[{#{color}:#{type}}] "
-
-  return tfunk(prefix + string)
-
-program
-  .option('-v, --verbose', 'print more output')
-  .parse(process.argv)
-
-print = console.log
-
-info = () ->
-
-debug = () ->
-  if program.verbose?
-    print log 'debug', arguments...
+  new Promise (resolve, reject) =>
+    global[alias] = require(name)
+    resolve()
+  
+require_dependencies = =>
+  Promise.all [
+    async_require('program', 'commander')
+    async_require('sleep')
+    async_require('h', './helpers')
+    async_require('fs', 'graceful-fs')
+    async_require('path')
+    async_require('mkdirp')
+    async_require('chokidar')
+    async_require('jstransformer')
+    async_require('recursive', 'fs-readdir-recursive')
+    async_require('anymatch')
+    async_require('matter', 'gray-matter')
+    async_require('browser_sync', 'browser-sync')
+    async_require('tfunk')
+  ]
 
 config_path = "#{base_path}/glug-config.coffee"
 
 try
   config = require(config_path)
 catch error
-  throw log 'error', "config file not found at #{config_path}.coffee"
-  
-bs = b_sync.create()
+  throw 'error' + error + "\nconfig file not found at #{config_path}.coffee"
 
-merge = ->
-  new_object = {}
-  for object in arguments
-    for key of object
-      new_object[key] = object[key]
-  new_object
+bs = undefined
 
-write_file = (file, contents) ->
-  debug "about to write #{file}"
+start_browser_sync = ->
+  bs = browser_sync.create()
+  bs.init h.merge({
+    server: output_dir
+  }, config.server)
 
-  mkdirp path.dirname(file)
-  fs.writeFile file, contents, (err) ->
-    if err
-      throw err
+setup_commands = ->
+  new Promise (resolve, reject) =>
+    program
+      .option('-v, --verbose', 'print more output')
+      .parse(process.argv)
+    h.debug 'Setting up application commands and options'
+    resolve()
 
-rm_dir = (path) ->
-  if fs.existsSync(path)
-    fs.readdirSync(path).forEach (file, index) ->
-      curPath = path + '/' + file
-      if fs.lstatSync(curPath).isDirectory()
-        # recurse
-        rm_dir curPath
-      else
-        # delete file
-        fs.unlinkSync curPath
-      return
-    fs.rmdirSync path
-
+transformer_names = config.transformers
 transformers = {}
 
-transformers = merge(transformers, config.transformers)
+load_transformer = (name) ->
+  new Promise (resolve, reject) =>
+    h.debug "Requiring JSTransformer: #{name}"
+    try
+      transformers[name] = jstransformer(require("jstransformer-#{name}"))
+      resolve()
+    catch error
+      reject h.log 'error',
+        """
+        #{error}
+    
+        Try running `npm install --save jstransformer-#{name}`
+        or `yarn add jstransformer-#{name}`
+        """.replace('Error: ', '')
 
-renderers = {}
-
-debug 'about to require jstransformers'
-for name, options of transformers
-  debug "Requiring JSTransformer: #{name}"
-  try
-    renderers[name] = transformer(require("jstransformer-#{name}"))
-  catch error
-    throw log 'error',
-      """
-      #{error}
-  
-      Try running `npm install --save jstransformer-#{name}`
-      or `yarn add jstransformer-#{name}`
-      """.replace('Error: ', '')
-
-debug 'done requiring jstransformers'
+load_all_transformers = ->
+  Promise.map h.to_array(transformer_names), (transformer) ->
+    load_transformer(transformer.name)
 
 paths = {}
 
 input_dir  = config.input_dir  || 'app'
 output_dir = config.output_dir || 'public'
 
-if transformers['markdown-it']? and transformers['markdown-it'].highlight?
-  hljs = require('highlight.js')
-  transformers['markdown-it'].highlight = (str, lang) ->
-    if lang and hljs.getLanguage(lang)
-      try
-        return hljs.highlight(lang, str).value
-      catch __
-    ''
-
-transformers_for = (filetype) ->
-  renderer_names = []
-  if config.files? and config.files[filetype]?
-    return config['files'][filetype]
-  else
-    for name, transformer of transformers
-      renderer = renderers[name]
-      if renderer.inputFormats.includes(filetype)
-        renderer_names.push name
-
-    if renderer_names.length is 0
-      debug 'renderer_names is empty'
-      return []
-
-    last_renderer_name = renderer_names[renderer_names.length - 1]
-    last_extension = renderers[last_renderer_name].outputFormat
-    if last_extension isnt filetype
-      for new_renderer in transformers_for(last_extension)
-        renderer_names.push new_renderer
-
-  return renderer_names
-
-all_files = recursive(input_dir)
-
 files = {}
+pipelines = {}
 
-make_file_data_for = (file) ->
-  for pipeline_name, pipeline of config.pipelines
-    files[pipeline_name] = {}
-    for tier_name, tier of pipeline
-      for glob, glob_transformers of tier
-        if typeof glob_transformers is 'string'
-          glob_transformers = [glob_transformers]
-        if anymatch(glob, file)
-          files[pipeline_name][file] = {}
-          file_ref = files[pipeline_name][file]
-          file_ref.transformers = {}
-          file_ref.transformers[tier_name] ||= []
-          file_ref.transformers[tier_name] =
-            file_ref.transformers[tier_name].concat(glob_transformers)
+generate_file_list = ->
+  new Promise (resolve, reject) ->
+    h.debug 'Making file list...'
+    all_files = recursive(input_dir)
+    for file in all_files
+      files[file] = {}
+      files[file].is_rendered = false
+      files[file].in_format = path.extname(file).replace('.', '')
+      for pipeline_name, pipeline of config.pipelines
+        for tier_name, tier of pipeline
+          for glob, transforms of tier
+            if anymatch(glob, file)
+              # Convert transforms to array if necessary
 
-  input_format = path.extname(file).replace('.', '')
+              if typeof transforms is 'string'
+                transforms = [transforms]
 
-  transformer_order = files[file].transformers
-  if transformer_order = {}
-    transformer_order =
-      first: [ 'copy' ]
-    file_ref.transformers = transformer_order
-    new_name = file
+              if transforms.length is 0
+                transforms = ['copy']
+                files[file].out_format ||= files[file].in_format
 
-  else
-    tier_names = Object.keys(transformer_order)
-    last_tier = transformer_order[tier_names[tier_names.length - 1]]
-    last_renderer = last_tier[last_tier.length - 1]
-    output_format = renderers[last_renderer].outputFormat
-    new_name = file.replace(input_format, output_format).replace(output_dir, '')
+              else
+                last_transformer = h.last(transforms).data
+                files[file].out_format = transformers[last_transformer].outputFormat
+              files[file].pipeline = pipeline_name
+              pipelines[pipeline_name] ||= {}
+              pipelines[pipeline_name][tier_name] ||= {}
+              pipelines[pipeline_name][tier_name][file] ||= {}
+              file_ref = pipelines[pipeline_name][tier_name][file]
+              file_ref.transforms ||= []
+              file_ref.transforms = file_ref.transforms.concat transforms
 
-  files[file] = merge files[file],
-    is_rendered: false
-    new_path: path.join(output_dir, new_name)
-    input_format: input_format
-    output_format: output_format
+      files[file].out_format ||= files[file].in_format
+      files[file].out_path = file.replace(
+        files[file].in_format,
+        files[file].out_format
+      )
 
-make_file_list = ->
-  debug 'making file list'
-  promises = []
-  for file in all_files
-    promises.push make_file_data_for(file)
+    h.debug "Files: #{h.json files}"
+    h.debug "Pipelines: #{h.json pipelines}"
+    h.debug 'File list is finished'
+    resolve()
 
-  return Promise.all(promises)
+prepare_output_dir = ->
+  new Promise (resolve, reject) ->
+    try
+      h.rm_dir output_dir
+      unless fs.existsSync(output_dir)
+        fs.mkdir(output_dir)
+      resolve()
+    catch err
+      reject err
 
-bs_options = merge({
-  server: output_dir
-}, config.server)
+start_watcher = ->
+  chokidar.watch(input_dir, {}).on 'all', (event, file) ->
+    if event is 'change' or event is 'remove' # or event is 'add'
+      file = file.replace input_dir + '/', ''
+      pipeline = files[file].pipeline
+      # out_format = files[file].out_format
+      out_format = pipeline.toLowerCase()
+      h.debug "#{file} #{event}d"
+      files[file].is_rendered = false
+      h.debug "Pipeline to reload is #{pipeline}"
+      render_pipeline({name: pipeline, data: pipelines[pipeline]})
+        .then -> bs.reload("*.#{out_format}")
 
-bs.init(bs_options)
+render = (file, contents, transform, settings={}) ->
+  h.debug "Rendering #{file.name} with {red:#{transform}}."
 
-rm_dir output_dir
-
-unless fs.existsSync(output_dir)
-  fs.mkdir(output_dir)
-
-render = (filename, contents, renderer_names, settings={}) ->
   new Promise (resolve, reject) =>
+    bad_things = ["", undefined, null]
+
+    if bad_things.includes contents
+      h.warn("I want to render #{file.name}
+        with #{transform},
+        but I can't because #{file.name} is #{contents}")
+      return resolve("")
+
+    if typeof contents isnt 'string'
+      h.warn("The contents of #{file.name}
+      is of type #{typeof contents}, and is:
+        #{h.json contents}")
+
     file_data = matter(contents)
 
     contents = file_data.content
     frontmatter = file_data.data
 
-    if renderer_names is 'copy'
-      resolve(contents)
+    if transform is 'copy'
+      return resolve(contents)
 
-    default_transformers_config =
-      stylus:
-        paths: [
-          input_dir
-        ]
-
-    renderer_name = renderer_names[0]
-
-    debug "#{filename}: rendering with #{renderer_name}"
-    renderer = renderers[renderer_name]
-    renderer_config = transformers[renderer_name]
-
+    renderer = transformers[transform]
     output_format = renderer.outputFormat
-
-    renderer_config = merge(settings, renderer_config, frontmatter)
+    renderer_config = h.merge(settings, frontmatter)
 
     renderer.renderAsync(contents, renderer_config)
-      .then (rendered_contents) =>
-        debug "#{filename}: finished rendering with #{renderer_name}"
-        rendered_contents = rendered_contents.body
-        renderers_left = renderer_names[1..]
-        if renderers_left.length is 0 or renderers_left is undefined
-          resolve(rendered_contents)
-        else
-          render(filename, rendered_contents, renderers_left)
-            .then (final_contents) =>
-              resolve(final_contents)
-            .catch (err) =>
-              reject log 'error', renderer_names[0], '\n' + err
-              # throw log 'error', renderer_names[0], '\n' + err
-      .catch (err) =>
-        reject log 'error', '\n' + err
-
-render_tier = (file, text) ->
-  console.log "render_tier('#{file}')"
-
-  new Promise (resolve, reject) =>
-
-    file_data = files[file]
-
-    tier = 'syntax'
-
-    "render('#{file}', '#{text}', '#{file_data.transformers[tier]}', opts)"
-    render(file, text, file_data.transformers[tier],
-      filename: path.join(input_dir, file), basedir: output_dir)
-      .then (rendered_contents) =>
-        write_file(file_data.new_path, rendered_contents)
-        resolve()
+      .then (contents) =>
+        h.debug "#{file.name}: finished rendering with #{renderer.name}"
+        return resolve contents.body
       .catch (err) ->
-        reject err
+        throw err
 
-render_file_tier = (file) ->
-  console.log "render_file_tier('#{file}')"
+    # renderer.renderAsync contents, renderer_config, (err, contents) =>
+    #   throw err if err
+    #   h.debug "#{file.name}: finished rendering with #{transform}"
+    #   return resolve contents.body
 
+render_file_tier = (file, tier, first_tier = true) ->
+  h.debug "#{file.name}: #{tier.name}"
   new Promise (resolve, reject) =>
 
-    file_data = files[file]
+    file_data = files[file.name]
+    # sleep.sleep(1)
 
-    if file_data.is_rendered
-      resolve(file_data.new_path)
+    # h.debug "First tier: #{first_tier}"
 
-    console.log JSON.stringify file_data.transformers, null, 2
-    # list_of_renderers = file_data.transformers.join(' => ')
-    # debug ".#{file_data.input_format}
-    #   => #{list_of_renderers}
-    #   => .#{file_data.output_format}"
+    out_path = path.join(output_dir, file_data.out_path)
+    if first_tier
+      file_path = path.join(input_dir, file.name)
+    else
+      file_path = out_path
 
-    fs.readFile path.join(input_dir, file), { encoding: 'utf8' }, (err, text) =>
+    h.debug "Looking for file at #{file_path}"
+    fs.readFile file_path, { encoding: 'utf8' }, (err, text) =>
 
       if err
-        reject err
+        throw h.log 'error', err
 
-      render_tier(file, text)
-        .then =>
-          file_data.is_rendered = true
+      h.debug "Found file #{file_path}"
+
+      transforms = tier.data[file.name].transforms
+
+      Promise.reduce(transforms,
+        (contents, transform) =>
+          render(file, contents, transform,
+            filename: file_path, basedir: output_dir)
+          .catch (err) -> throw err
+        , text
+      )
+        .catch (err) -> throw err
+        .then (contents) =>
+          h.write_file(out_path, contents)
           resolve()
-        .catch (err) =>
-          reject err
+
+render_all_in_tier = (pipeline, tier, first_tier = true) ->
+  h.debug "#{pipeline.name}: #{tier.name}"
+  Promise.map h.to_array(tier.data), (file) =>
+    unless files[file.name].is_rendered
+      render_file_tier(file, tier, first_tier)
+
+render_pipeline = (pipeline) ->
+  h.debug h.bold "#{pipeline.name} Pipeline"
+  Promise.reduce h.to_array(pipeline.data),
+    (acc, tier, i) =>
+      first_tier = if i is 0 then true else false
+      h.debug "Rendering tier {cyan:#{i + 1}}
+        - {black.bgCyan:#{tier.name}} for
+        {blue:#{pipeline.name}}"
+      promise = render_all_in_tier pipeline, tier, first_tier
+      promise.then =>
+        h.debug "Finished tier: #{tier.name}"
+      return promise
+    , 0
 
 render_all = ->
-  new Promise (resolve, reject) ->
-    # pipeline_promises = []
-    # for pipeline of files
-    #   file_promises = []
-    #   for file of files
-    #     file_promises.push render_file_tier(file)
-    #   Promise.all(promises)
-    #     .then =>
-    #       resolve('hi')
-    #     .catch (err) =>
-    #       reject err
+  Promise.map h.to_array(pipelines), (pipeline) ->
+    render_pipeline pipeline
 
-make_file_list()
-  .catch (err) ->
-    throw err
-  .then ->
-    console.log JSON.stringify files, null, 2
-
-    render_all().then ->
-      chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-        if event is 'change' or event is 'remove' or event is 'add'
-          file = file.replace input_dir + '/', ''
-          files[file].is_rendered = false
-          render_all()
-            .then (files_changed) =>
-              bs.reload(files_changed)
-            .catch (err) =>
-              throw err
-
-debug 'script ended'
+require_dependencies()
+  .then start_browser_sync
+  .then setup_commands
+  .then load_all_transformers
+  .then generate_file_list
+  .then prepare_output_dir
+  .then start_watcher
+  .then render_all
+  .catch (err) -> throw err

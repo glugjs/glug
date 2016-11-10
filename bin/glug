@@ -8,10 +8,6 @@ program
 
   .command('watch [directory]', 'start a server')
 
-  .command('watch2 [directory]', 'start a server')
-
-  .command('watch3 [directory]', 'start a server')
-
   .command('compile [directory]', 'build the project')
 
   .parse(process.argv)
