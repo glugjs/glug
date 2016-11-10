@@ -41,6 +41,8 @@ try
 catch error
   throw 'error' + error + "\nconfig file not found at #{config_path}.coffee"
 
+bs = undefined
+
 start_browser_sync = ->
   bs = browser_sync.create()
   bs.init h.merge({
@@ -104,11 +106,12 @@ generate_file_list = ->
 
               if transforms.length is 0
                 transforms = ['copy']
-                files[file].out_format = files[file].in_format
+                files[file].out_format ||= files[file].in_format
 
               else
                 last_transformer = h.last(transforms).data
                 files[file].out_format = transformers[last_transformer].outputFormat
+              files[file].pipeline = pipeline_name
               pipelines[pipeline_name] ||= {}
               pipelines[pipeline_name][tier_name] ||= {}
               pipelines[pipeline_name][tier_name][file] ||= {}
@@ -138,17 +141,17 @@ prepare_output_dir = ->
       reject err
 
 start_watcher = ->
-  # new Promise (resolve, reject) ->
   chokidar.watch(input_dir, {}).on 'all', (event, file) ->
     if event is 'change' or event is 'remove' # or event is 'add'
       file = file.replace input_dir + '/', ''
+      pipeline = files[file].pipeline
+      # out_format = files[file].out_format
+      out_format = pipeline.toLowerCase()
       h.debug "#{file} #{event}d"
       files[file].is_rendered = false
-      render_all()
-      #   .then (files_changed) =>
-      #     bs.reload(files_changed)
-      #   .catch (err) =>
-      #     reject err
+      h.debug "Pipeline to reload is #{pipeline}"
+      render_pipeline({name: pipeline, data: pipelines[pipeline]})
+        .then -> bs.reload("*.#{out_format}")
 
 render = (file, contents, transform, settings={}) ->
   h.debug "Rendering #{file.name} with {red:#{transform}}."
@@ -157,13 +160,13 @@ render = (file, contents, transform, settings={}) ->
     bad_things = ["", undefined, null]
 
     if bad_things.includes contents
-      h.warn("I want to render #{filename}
+      h.warn("I want to render #{file.name}
         with #{transform},
         but I can't because #{file.name} is #{contents}")
-      return
+      return resolve("")
 
     if typeof contents isnt 'string'
-      h.warn("The contents of #{filename}
+      h.warn("The contents of #{file.name}
       is of type #{typeof contents}, and is:
         #{h.json contents}")
 
