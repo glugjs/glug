@@ -7,7 +7,7 @@
     "Static Site"
   ],
   "bin": {
-    "glug": "./bin/glug"
+    "glug": "./index.coffee"
   },
   "dependencies": {
     "app-module-path": "^2.1.0",
