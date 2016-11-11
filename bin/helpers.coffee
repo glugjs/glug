@@ -31,6 +31,7 @@ h =
     value.name = next_key
     if value.data?
       return value
+
   first: (object) ->
     if typeof object is 'object'
       value = {}
@@ -49,78 +50,10 @@ h =
     else
       object[object.length - 1]
 
-  bold: (string) ->
-    "{bold:#{string}}"
-
   json: ->
     ('\n' + JSON.stringify arguments..., null, 2)
-      .replace(/{/g, "\\{").replace(/}/g, "\\}")
-  log: ->
-
-    args = Array::slice.call(arguments)
-
-    log_types = ['info', 'warn', 'error', 'debug']
-
-    if args[0] and args[1] and args[2]
-      type = args[0]
-      sender = args[1]
-      strings = args[2..]
-
-    else if args[0] and args[1]
-      strings = args[1..]
-
-      if log_types.includes args[0]
-        type = args[0]
-
-      else
-        sender = args[0]
-
-    else
-      strings = args[0..]
-
-    type ||= 'info'
-    sender ||= 'glug'
-
-    string = strings.join(' ')
-
-    switch sender
-      when 'glug'
-        color = 'green'
-      else
-        color = 'yellow'
-
-    prefix = "[{#{color}:#{sender}}]"
-
-    switch type
-      when 'info'
-        color = 'cyan'
-      when 'warn'
-        color = 'yellow'
-      when 'error'
-        color = 'red'
-      when 'debug'
-        color = 'blue'
-      else
-        color = 'gray'
-
-    prefix += "[{#{color}:#{type}}] "
-
-    return tfunk(prefix + string)
 
   print: console.log
-
-  debug: () ->
-    if program.verbose?
-      h.print h.log 'debug', arguments...
-
-  info: () ->
-    h.print h.log 'info', arguments...
-
-  warn: () ->
-    h.print h.log 'warn', arguments...
-
-  error: () ->
-    h.print h.log 'error', arguments...
 
   merge: ->
     new_object = {}
@@ -130,11 +63,11 @@ h =
     new_object
 
   write_file: (file, contents) ->
-    new Promise (resolve, reject) =>
-      h.debug "Writing #{file}"
+    new Promise (resolve, reject) ->
+      l.debug "Writing #{file}"
 
       mkdirp.sync path.dirname(file)
-      fs.writeFile file, contents, (err) =>
+      fs.writeFile file, contents, (err) ->
         if err
           console.error err
           return reject err
