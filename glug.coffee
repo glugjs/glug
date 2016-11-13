@@ -1,43 +1,30 @@
-#!/usr/bin/env coffee
-
-# --nodejs --inspect
-
-global.program = require('commander')
-util = require('util')
-
 base_path = process.cwd()
 
 require('app-module-path').addPath("#{base_path}/node_modules")
 Promise = require('bluebird')
 Logdown = require('logdown')
+global.program = require('commander')
 
 global.l = new Logdown prefix: 'glug', alignOutput: true
 
-async_require = ->
-  if arguments[0] and arguments[1]
-    name = arguments[1]
-    alias = arguments[0]
-  else
-    name = arguments[0]
-    alias = arguments[0]
+l.debug = ->
+  if global.verbose
+    l.log arguments...
 
-  new Promise (resolve, reject) ->
-    global[alias] = require(name)
-    resolve()
-  
 require_dependencies = ->
-  Promise.all [
-    async_require('h', './helpers')
-    async_require('fs', 'graceful-fs')
-    async_require('path')
-    async_require('mkdirp')
-    async_require('chokidar')
-    async_require('jstransformer')
-    async_require('recursive', 'fs-readdir-recursive')
-    async_require('anymatch')
-    async_require('matter', 'gray-matter')
-    async_require('browser_sync', 'browser-sync')
-  ]
+  new Promise (resolve, reject) ->
+    require('coffee-script/register')
+    global.h = require('./helpers')
+    global.fs = require('fs')
+    global.path = require('path')
+    global.mkdirp = require('mkdirp')
+    global.chokidar = require('chokidar')
+    global.jstransformer = require('jstransformer')
+    global.recursive = require('fs-readdir-recursive')
+    global.anymatch = require('anymatch')
+    global.matter = require('gray-matter')
+    global.browser_sync = require('browser-sync')
+    resolve()
 
 config = undefined
 config_path = undefined
@@ -271,13 +258,20 @@ render_all = ->
     render_pipeline pipeline
 
 commands = {
+  init: program.command('init [directory]')
   watch: program.command('watch [directory]')
   build: program.command('build [directory]')
 }
 
 class Glug
 
-  build: ->
+  # init: ->
+  #   Sprout = require('sprout')
+  #   sprout = new Sprout()
+  #   sprout.add()
+
+  watch: ->
+    global.verbose = commands.watch.verbose
     require_dependencies()
       .then load_config
       .then start_config_watcher
@@ -289,7 +283,8 @@ class Glug
       .then render_all
       .catch (err) -> throw err
 
-  watch: ->
+  build: ->
+    global.verbose = commands.build.verbose
     require_dependencies()
       .then load_config
       .then load_all_transformers
@@ -301,6 +296,11 @@ class Glug
 
 
 glug = new Glug()
+
+commands.init
+  .description('set up a new project')
+  .alias('new')
+  .action glug.init
 
 commands.watch
   .description('start a server')
@@ -318,10 +318,7 @@ program
   .version('0.0.5')
   .parse(process.argv)
 
-console.log process.argv[2..]
-
-for command in commands
-  global.verbose ||= command.verbose
+unless process.argv[2..].length
+  program.outputHelp()
 
 module.exports = Glug
-export default Glug

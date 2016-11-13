@@ -6,6 +6,11 @@
     "JSTransformers",
     "Static Site"
   ],
+  "scripts": {
+    "foo": "echo 'hi'",
+    "foobar": "coffee -c ./glug.coffee",
+    "prepublish": "echo '#!/usr/bin/env node' > index.js; chmod +x index.js; coffee --bare -p -c glug.coffee | uglifyjs - -m >> index.js"
+  },
   "bin": {
     "glug": "./index.coffee"
   },
@@ -14,10 +19,12 @@
     "bluebird": "^3.4.6",
     "browser-sync": "^2.17.0",
     "chokidar": "^1.6.0",
+    "coffee-script": "^1.11.1",
     "fs-readdir-recursive": "^1.0.0",
     "glob": "^7.1.1",
     "graceful-fs": "^4.1.0",
     "gray-matter": "^2.0.2",
+    "inquirer": "^1.2.2",
     "jstransformer": "^1.0.0",
     "logdown": "^1.4.2",
     "mkdirp": "^0.5.1"
@@ -26,5 +33,8 @@
     "type": "git",
     "url": "https://gitlab.com/glug/glug.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "uglify-js": "^2.7.4"
+  }
 }
