@@ -12,6 +12,7 @@ l.debug = ->
     l.log arguments...
 
 require_dependencies = ->
+  l.debug 'requiring dependencies'
   new Promise (resolve, reject) ->
     require('coffee-script/register')
     global.h = require('./helpers')
@@ -258,20 +259,30 @@ render_all = ->
     render_pipeline pipeline
 
 commands = {
-  init: program.command('init [directory]')
+  init: program.command('init <directory>')
   watch: program.command('watch [directory]')
   build: program.command('build [directory]')
 }
 
 class Glug
-
-  # init: ->
-  #   Sprout = require('sprout')
-  #   sprout = new Sprout()
-  #   sprout.add()
+  init: (directory) ->
+    l.info "directory is #{directory}"
+    Sprout = require('sprout')
+    path = require('path')
+    os = require('os')
+    mkdirp = require('mkdirp')
+    inquirer = require('inquirer')
+    template_dir = path.join(os.homedir(), '.config/glug')
+    mkdirp.sync template_dir
+    sprout = new Sprout(template_dir)
+    sprout.add('glug', 'https://github.com/glugjs/sprout-glug')
+      .then ->
+        sprout.init 'glug', directory,
+          questionnaire: inquirer.prompt.bind(inquirer)
 
   watch: ->
     global.verbose = commands.watch.verbose
+    l.log 'watch', ('`verbose`' if verbose)
     require_dependencies()
       .then load_config
       .then start_config_watcher
@@ -285,6 +296,7 @@ class Glug
 
   build: ->
     global.verbose = commands.build.verbose
+    l.log 'build', ('`verbose`' if verbose)
     require_dependencies()
       .then load_config
       .then load_all_transformers
@@ -321,4 +333,4 @@ program
 unless process.argv[2..].length
   program.outputHelp()
 
-module.exports = Glug
+module.exports = glug

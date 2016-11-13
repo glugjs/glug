@@ -7,8 +7,7 @@
     "Static Site"
   ],
   "scripts": {
-    "foo": "echo 'hi'",
-    "foobar": "coffee -c ./glug.coffee",
+    "test": "npm run prepublish; mocha --compilers coffee:coffee-script/register",
     "prepublish": "echo '#!/usr/bin/env node' > index.js; chmod +x index.js; coffee --bare -p -c glug.coffee | uglifyjs - -m >> index.js"
   },
   "bin": {
@@ -27,7 +26,8 @@
     "inquirer": "^1.2.2",
     "jstransformer": "^1.0.0",
     "logdown": "^1.4.2",
-    "mkdirp": "^0.5.1"
+    "mkdirp": "^0.5.1",
+    "sprout": "^1.2.0"
   },
   "repository": {
     "type": "git",
@@ -35,6 +35,10 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "chai": "^3.5.0",
+    "coffee": "^3.3.0",
+    "mocha": "^3.1.2",
+    "sinon": "^1.17.6",
     "uglify-js": "^2.7.4"
   }
 }
