@@ -266,6 +266,8 @@ commands = {
 
 class Glug
   init: (directory) ->
+    global.verbose = commands.init.verbose
+    l.log 'init', ('`verbose`' if verbose)
     l.info "directory is #{directory}"
     Sprout = require('sprout')
     path = require('path')
@@ -275,6 +277,7 @@ class Glug
     template_dir = path.join(os.homedir(), '.config/glug')
     mkdirp.sync template_dir
     sprout = new Sprout(template_dir)
+    l.debug h.json sprout.templates
     sprout.add('glug', 'https://github.com/glugjs/sprout-glug')
       .then ->
         sprout.init 'glug', directory,
@@ -311,6 +314,7 @@ glug = new Glug()
 
 commands.init
   .description('set up a new project')
+  .option('-v, --verbose', 'print more output')
   .alias('new')
   .action glug.init
 

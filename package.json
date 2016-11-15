@@ -7,7 +7,7 @@
     "Static Site"
   ],
   "scripts": {
-    "test": "npm run prepublish; mocha --compilers coffee:coffee-script/register",
+    "test": "npm run prepublish; mocha",
     "prepublish": "echo '#!/usr/bin/env node' > index.js; chmod +x index.js; coffee --bare -p -c glug.coffee | uglifyjs - -m >> index.js"
   },
   "bin": {
