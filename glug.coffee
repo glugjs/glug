@@ -331,7 +331,7 @@ commands.build
   .action glug.build
 
 program
-  .version('0.0.5')
+  .version('0.0.10')
   .parse(process.argv)
 
 unless process.argv[2..].length
