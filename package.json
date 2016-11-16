@@ -1,7 +1,7 @@
 {
   "name": "glug",
   "description": "A static site generator based on JSTransformers",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "keywords": [
     "JSTransformers",
     "Static Site"
@@ -11,7 +11,7 @@
     "prepublish": "echo '#!/usr/bin/env node' > index.js; chmod +x index.js; coffee --bare -p -c glug.coffee | uglifyjs - -m >> index.js"
   },
   "bin": {
-    "glug": "./index.coffee"
+    "glug": "./index.js"
   },
   "dependencies": {
     "app-module-path": "^2.1.0",
