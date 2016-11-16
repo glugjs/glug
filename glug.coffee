@@ -159,13 +159,13 @@ render = (file, contents, transform, settings = {}) ->
     bad_things = ['', undefined, null]
 
     if bad_things.includes contents
-      h.warn("I want to render #{file.name}
+      l.warn("I want to render #{file.name}
         with #{transform},
         but I can't because #{file.name} is #{contents}")
       return resolve('')
 
     if typeof contents isnt 'string'
-      h.warn("The contents of #{file.name}
+      l.warn("The contents of #{file.name}
       is of type #{typeof contents}, and is:
         #{h.json contents}")
 
