@@ -19,6 +19,7 @@
     "browser-sync": "^2.17.0",
     "chokidar": "^1.6.0",
     "coffee-script": "^1.11.1",
+    "commander": "^2.9.0",
     "fs-readdir-recursive": "^1.0.0",
     "glob": "^7.1.1",
     "graceful-fs": "^4.1.0",
