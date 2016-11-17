@@ -47,20 +47,22 @@ describe 'cli', ->
         .end done
 
   describe 'init', ->
-    it 'should call init', (done) ->
-      coffee.spawn 'glug', ['init', new_path]
-        .expect 'stdout', /init/
-        .end done
+    it 'should call init'
+    # it 'should call init', (done) ->
+    #   coffee.spawn 'glug', ['init', new_path]
+    #     .expect 'stdout', /init/
+    #     .end done
 
     it 'should error without directory argument', (done) ->
       coffee.spawn 'glug', ['init']
         .expect 'stderr', /error: missing required argument `directory'/
         .end done
 
-    it 'should have debug information', (done) ->
-      coffee.spawn 'glug', ['init', '--verbose', new_path]
-        .expect 'stdout', /verbose/
-        .end done
+    it 'should have debug information'
+    # it 'should have debug information', (done) ->
+    #   coffee.spawn 'glug', ['init', '--verbose', new_path]
+    #     .expect 'stdout', /verbose/
+    #     .end done
 
     it 'should have help info', (done) ->
       coffee.spawn 'glug', ['init', '--help']

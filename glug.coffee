@@ -266,22 +266,24 @@ commands = {
 
 class Glug
   init: (directory) ->
+    if not directory?
+      throw new Error 'Please specify a directory'
     global.verbose = commands.init.verbose
     l.log 'init', ('`verbose`' if verbose)
     l.info "directory is #{directory}"
-    Sprout = require('sprout')
-    path = require('path')
-    os = require('os')
-    mkdirp = require('mkdirp')
-    inquirer = require('inquirer')
-    template_dir = path.join(os.homedir(), '.config/glug')
-    mkdirp.sync template_dir
-    sprout = new Sprout(template_dir)
-    l.debug h.json sprout.templates
-    sprout.add('glug', 'https://github.com/glugjs/sprout-glug')
-      .then ->
-        sprout.init 'glug', directory,
-          questionnaire: inquirer.prompt.bind(inquirer)
+    require_dependencies().then ->
+      Sprout = require('sprout')
+      path = require('path')
+      os = require('os')
+      mkdirp = require('mkdirp')
+      inquirer = require('inquirer')
+      template_dir = path.join(os.homedir(), '.config/glug')
+      mkdirp.sync template_dir
+      sprout = new Sprout(template_dir)
+      sprout.add('glug', 'https://github.com/glugjs/sprout-glug')
+        .then ->
+          sprout.init 'glug', directory,
+            questionnaire: inquirer.prompt.bind(inquirer)
 
   watch: ->
     global.verbose = commands.watch.verbose
