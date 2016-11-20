@@ -12,7 +12,7 @@ describe 'cli', ->
     it 'should have help info', (done) ->
       coffee.spawn 'glug'
         .expect 'stdout', /Usage/
-        .end done 
+        .end done
   describe 'build', ->
     it 'should call builder', (done) ->
       coffee.spawn 'glug', ['build']
