@@ -16,7 +16,7 @@
   "dependencies": {
     "app-module-path": "^2.1.0",
     "bluebird": "^3.4.6",
-    "browser-sync": "^2.18.1",
+    "browser-sync": "^2.18.2",
     "chokidar": "^1.6.0",
     "coffee-script": "^1.11.1",
     "commander": "^2.9.0",
