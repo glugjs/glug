@@ -7,5 +7,5 @@ node_js:
   - '4'
 
 script:
-  - 'npm i -g glug'
+  - 'npm link'
   - 'npm test'
