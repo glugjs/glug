@@ -183,8 +183,6 @@ render = (file, contents, transform, settings = {}) ->
       frontmatter,
       config.transformers[renderer.name])
 
-    l.debug h.json renderer_config
-
     renderer.renderAsync(contents, renderer_config)
       .then (contents) ->
         l.debug "#{file.name}: finished rendering with #{renderer.name}"
