@@ -216,8 +216,6 @@ render_file_tier = (file, tier, first_tier = true) ->
       if err
         throw l.error err
 
-      l.debug "Found file #{file_path}"
-
       transforms = tier.data[file.name].transforms
 
       Promise.reduce(transforms,
