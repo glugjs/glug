@@ -64,8 +64,6 @@ h =
 
   write_file: (file, contents) ->
     new Promise (resolve, reject) ->
-      l.debug "Writing #{file}"
-
       mkdirp.sync path.dirname(file)
       fs.writeFile file, contents, (err) ->
         if err
