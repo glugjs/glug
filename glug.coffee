@@ -89,8 +89,8 @@ generate_file_list = ->
         for tier_name, tier of pipeline
           for glob, transforms of tier
             if anymatch(glob, file)
-              # Convert transforms to array if necessary
 
+              # Convert transforms to array if necessary
               if typeof transforms is 'string'
                 transforms = [transforms]
 
@@ -146,11 +146,13 @@ start_watcher = ->
       pipeline = files[file].pipeline
       # out_format = files[file].out_format
       out_format = pipeline.toLowerCase()
-      l.debug "#{file} #{event}d"
       files[file].is_rendered = false
+      l.debug "`#{file}` #{event}d"
       l.debug "Pipeline to reload is #{pipeline}"
       render_pipeline(name: pipeline, data: pipelines[pipeline])
-        .then -> bs.reload("*.#{out_format}")
+        .then ->
+          console.log "hi"
+          bs.reload("*.#{out_format}")
 
 render = (file, contents, transform, settings = {}) ->
   l.debug "Rendering **#{file.name}** with `#{transform}`."
@@ -185,7 +187,7 @@ render = (file, contents, transform, settings = {}) ->
 
     renderer.renderAsync(contents, renderer_config)
       .then (contents) ->
-        l.debug "#{file.name}: finished rendering with #{renderer.name}"
+        # l.debug "#{file.name}: finished rendering with #{renderer.name}"
         return resolve contents.body
       .catch (err) ->
         throw err
@@ -196,7 +198,7 @@ render = (file, contents, transform, settings = {}) ->
     #   return resolve contents.body
 
 render_file_tier = (file, tier, first_tier = true) ->
-  l.debug "#{file.name}: #{tier.name}"
+  # l.debug "#{file.name}: #{tier.name}"
   new Promise (resolve, reject) ->
 
     file_data = files[file.name]
@@ -210,8 +212,8 @@ render_file_tier = (file, tier, first_tier = true) ->
     else
       file_path = out_path
 
-    l.debug "Looking for file at #{file_path}"
-    fs.readFile file_path, { encoding: 'utf8' }, (err, text) ->
+    # l.debug "Looking for file at #{file_path}"
+    fs.readFile file_path, encoding: 'utf8', (err, text) ->
 
       if err
         throw l.error err
@@ -223,17 +225,19 @@ render_file_tier = (file, tier, first_tier = true) ->
           render(file, contents, transform,
             filename: file_path, basedir: output_dir)
           .catch (err) -> throw err
-        , text
-      )
+        , text)
         .catch (err) -> throw err
         .then (contents) ->
           h.write_file(out_path, contents)
+          file_data.is_rendered = true
           resolve()
 
 render_all_in_tier = (pipeline, tier, first_tier = true) ->
-  l.debug "#{pipeline.name}: #{tier.name}"
+  # l.debug "#{pipeline.name}: #{tier.name}"
   Promise.map h.to_array(tier.data), (file) ->
-    unless files[file.name].is_rendered
+    rendered = files[file.name].is_rendered
+    l.debug "#{file.name} is rendered: #{rendered}"
+    unless rendered
       render_file_tier(file, tier, first_tier)
 
 render_pipeline = (pipeline) ->
@@ -241,12 +245,12 @@ render_pipeline = (pipeline) ->
   Promise.reduce h.to_array(pipeline.data),
     (acc, tier, i) ->
       first_tier = if i is 0 then true else false
-      l.debug "Rendering tier #{i + 1}
-        - **#{tier.name}** for
-        `#{pipeline.name}`"
+      # l.debug "Rendering tier #{i + 1}
+      #   - **#{tier.name}** for
+      #   `#{pipeline.name}`"
       promise = render_all_in_tier pipeline, tier, first_tier
-      promise.then ->
-        l.debug "Finished tier: #{tier.name}"
+      # promise.then ->
+      #   l.debug "Finished tier: #{tier.name}"
       return promise
     , 0
 
@@ -254,11 +258,11 @@ render_all = ->
   Promise.map h.to_array(pipelines), (pipeline) ->
     render_pipeline pipeline
 
-commands = {
+commands =
   init: program.command('init <directory>')
   watch: program.command('watch [directory]')
   build: program.command('build [directory]')
-}
+
 
 class Glug
   init: (directory) ->
@@ -329,7 +333,7 @@ commands.build
   .action glug.build
 
 program
-  .version('0.0.10')
+  .version('0.0.12')
   .parse(process.argv)
 
 unless process.argv[2..].length
