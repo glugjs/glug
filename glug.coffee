@@ -190,6 +190,7 @@ render = (file, contents, transform, settings = {}) ->
         # l.debug "#{file.name}: finished rendering with #{renderer.name}"
         return resolve contents.body
       .catch (err) ->
+        console.log err
         throw err
 
     # renderer.renderAsync contents, renderer_config, (err, contents) =>
@@ -237,8 +238,9 @@ render_all_in_tier = (pipeline, tier, first_tier = true) ->
   Promise.map h.to_array(tier.data), (file) ->
     rendered = files[file.name].is_rendered
     l.debug "#{file.name} is rendered: #{rendered}"
-    unless rendered
-      render_file_tier(file, tier, first_tier)
+    # unless rendered
+    #   render_file_tier(file, tier, first_tier)
+    render_file_tier(file, tier, first_tier)
 
 render_pipeline = (pipeline) ->
   l.debug "**#{pipeline.name} Pipeline**"
@@ -312,31 +314,35 @@ class Glug
 
 
 
+
 glug = new Glug()
 
-commands.init
-  .description('set up a new project')
-  .option('-v, --verbose', 'print more output')
-  .alias('new')
-  .action glug.init
+# if called directly
+if require.main is module
 
-commands.watch
-  .description('start a server')
-  .option('-v, --verbose', 'print more output')
-  .alias('server')
-  .action glug.watch
+  commands.init
+    .description('set up a new project')
+    .option('-v, --verbose', 'print more output')
+    .alias('new')
+    .action glug.init
 
-commands.build
-  .description('build the project')
-  .option('-v, --verbose', 'print more output')
-  .alias('compile')
-  .action glug.build
+  commands.watch
+    .description('start a server')
+    .option('-v, --verbose', 'print more output')
+    .alias('server')
+    .action glug.watch
 
-program
-  .version('0.0.12')
-  .parse(process.argv)
+  commands.build
+    .description('build the project')
+    .option('-v, --verbose', 'print more output')
+    .alias('compile')
+    .action glug.build
 
-unless process.argv[2..].length
-  program.outputHelp()
+  program
+    .version('0.0.13')
+    .parse(process.argv)
+
+  unless process.argv[2..].length
+    program.outputHelp()
 
 module.exports = glug
