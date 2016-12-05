@@ -1,14 +1,13 @@
 {
   "name": "glug",
   "description": "A static site generator based on JSTransformers",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "keywords": [
     "JSTransformers",
     "Static Site"
   ],
   "scripts": {
-    "test": "npm run prepublish; mocha",
-    "prepublish": "echo '#!/usr/bin/env node' > index.js; chmod +x index.js; coffee --bare -p -c glug.coffee | uglifyjs - -m >> index.js"
+    "test": "mocha"
   },
   "bin": {
     "glug": "./index.js"

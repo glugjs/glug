@@ -14,7 +14,6 @@ l.debug = ->
 require_dependencies = ->
   l.debug 'requiring dependencies'
   new Promise (resolve, reject) ->
-    require('coffee-script/register')
     global.h = require('./helpers')
     global.fs = require('fs')
     global.path = require('path')
@@ -260,11 +259,6 @@ render_all = ->
   Promise.map h.to_array(pipelines), (pipeline) ->
     render_pipeline pipeline
 
-commands =
-  init: program.command('init <directory>')
-  watch: program.command('watch [directory]')
-  build: program.command('build [directory]')
-
 
 class Glug
   init: (directory) ->
@@ -287,8 +281,8 @@ class Glug
           sprout.init 'glug', directory,
             questionnaire: inquirer.prompt.bind(inquirer)
 
-  watch: ->
-    global.verbose = commands.watch.verbose
+  watch: (verbose = false) ->
+    global.verbose = verbose
     l.log 'watch', ('`verbose`' if verbose)
     require_dependencies()
       .then load_config
@@ -301,8 +295,8 @@ class Glug
       .then render_all
       .catch (err) -> throw err
 
-  build: ->
-    global.verbose = commands.build.verbose
+  build: (verbose = false) ->
+    global.verbose = verbose
     l.log 'build', ('`verbose`' if verbose)
     require_dependencies()
       .then load_config
@@ -316,33 +310,5 @@ class Glug
 
 
 glug = new Glug()
-
-# if called directly
-if require.main is module
-
-  commands.init
-    .description('set up a new project')
-    .option('-v, --verbose', 'print more output')
-    .alias('new')
-    .action glug.init
-
-  commands.watch
-    .description('start a server')
-    .option('-v, --verbose', 'print more output')
-    .alias('server')
-    .action glug.watch
-
-  commands.build
-    .description('build the project')
-    .option('-v, --verbose', 'print more output')
-    .alias('compile')
-    .action glug.build
-
-  program
-    .version('0.0.13')
-    .parse(process.argv)
-
-  unless process.argv[2..].length
-    program.outputHelp()
 
 module.exports = glug
