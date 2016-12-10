@@ -140,8 +140,9 @@ start_config_watcher = ->
 
 start_watcher = ->
   chokidar.watch(input_dir, {}).on 'all', (event, file) ->
-    if event is 'change' or event is 'remove' # or event is 'add'
+    if event is 'change' or event is 'remove' # or event is 'add'     
       file = file.replace input_dir + '/', ''
+      file = file.replace input_dir + '\\', ''
       pipeline = files[file].pipeline
       # out_format = files[file].out_format
       out_format = pipeline.toLowerCase()
