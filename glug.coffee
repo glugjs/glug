@@ -185,7 +185,7 @@ render = (file, contents, transform, settings = {}) ->
       frontmatter,
       config.transformers[renderer.name])
 
-    renderer.renderAsync(contents, renderer_config)
+    renderer.renderAsync(contents, renderer_config, config.locals)
       .then (contents) ->
         # l.debug "#{file.name}: finished rendering with #{renderer.name}"
         return resolve contents.body
