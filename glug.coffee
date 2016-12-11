@@ -3,7 +3,6 @@ base_path = process.cwd()
 require('app-module-path').addPath("#{base_path}/node_modules")
 Promise = require('bluebird')
 Logdown = require('logdown')
-global.program = require('commander')
 
 global.l = new Logdown prefix: 'glug', alignOutput: true
 

@@ -17,13 +17,12 @@ if (require.main === module) {
   commands.init
     .description('set up a new project')
     .option('-v, --verbose', 'print more output')
-    .alias('new')
     .action(glug.init)
 
   commands.watch
     .description('start a server')
     .option('-v, --verbose', 'print more output')
-    .alias('server')
+    .alias('w')
     .action(function() {
       glug.watch(arguments[1].verbose)
     })
@@ -31,7 +30,7 @@ if (require.main === module) {
   commands.build
     .description('build the project')
     .option('-v, --verbose', 'print more output')
-    .alias('compile')
+    .alias('b')
     .action(function() {
       glug.build(arguments[1].verbose)
     })
