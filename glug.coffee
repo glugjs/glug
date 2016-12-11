@@ -71,6 +71,12 @@ load_transformer = (name) ->
         or `yarn add jstransformer-#{name}`
         """.replace('Error: ', '')
 
+handle = (err) ->
+  if err?
+    if err.stack?
+      err = err.stack
+    console.error(err)
+
 load_all_transformers = ->
   transformer_names = config.transformers
   transformers = {}
@@ -140,9 +146,11 @@ resolve_locals = ->
 
   console.log('waiting for locals to resolve...')
   # after all local promises are resolved
-  Promise.props(promises).then (res) ->
-    locals = res
-    console.log('locals finished')
+  Promise.props(promises)
+    .then (res) ->
+      locals = res
+      console.log('locals finished')
+    .catch handle
 
 start_config_watcher = ->
   chokidar.watch(config_path).on 'change', ->
@@ -152,6 +160,7 @@ start_config_watcher = ->
       .then generate_file_list
       .then render_all
       .then -> bs.reload('*')
+      .catch handle
 
 start_watcher = ->
   chokidar.watch(input_dir, {}).on 'all', (event, file) ->
@@ -168,6 +177,7 @@ start_watcher = ->
         .then ->
           console.log "hi"
           bs.reload("*.#{out_format}")
+        .catch handle
 
 render = (file, contents, transform, settings = {}) ->
   l.debug "Rendering **#{file.name}** with `#{transform}`."
@@ -204,14 +214,7 @@ render = (file, contents, transform, settings = {}) ->
       .then (contents) ->
         # l.debug "#{file.name}: finished rendering with #{renderer.name}"
         return resolve contents.body
-      .catch (err) ->
-        console.log err
-        throw err
-
-    # renderer.renderAsync contents, renderer_config, (err, contents) =>
-    #   throw err if err
-    #   l.debug "#{file.name}: finished rendering with #{transform}"
-    #   return resolve contents.body
+      .catch handle
 
 render_file_tier = (file, tier, first_tier = true) ->
   # l.debug "#{file.name}: #{tier.name}"
@@ -240,13 +243,13 @@ render_file_tier = (file, tier, first_tier = true) ->
         (contents, transform) ->
           render(file, contents, transform,
             filename: file_path, basedir: output_dir)
-          .catch (err) -> throw err
+            .catch handle
         , text)
-        .catch (err) -> throw err
         .then (contents) ->
           h.write_file(out_path, contents)
           file_data.is_rendered = true
           resolve()
+        .catch handle
 
 render_all_in_tier = (pipeline, tier, first_tier = true) ->
   # l.debug "#{pipeline.name}: #{tier.name}"
@@ -283,19 +286,21 @@ class Glug
     global.verbose = commands.init.verbose
     l.log 'init', ('`verbose`' if verbose)
     l.info "directory is #{directory}"
-    require_dependencies().then ->
-      Sprout = require('sprout')
-      path = require('path')
-      os = require('os')
-      mkdirp = require('mkdirp')
-      inquirer = require('inquirer')
-      template_dir = path.join(os.homedir(), '.config/glug')
-      mkdirp.sync template_dir
-      sprout = new Sprout(template_dir)
-      sprout.add('glug', 'https://github.com/glugjs/sprout-glug')
-        .then ->
-          sprout.init 'glug', directory,
-            questionnaire: inquirer.prompt.bind(inquirer)
+    require_dependencies()
+      .then ->
+        Sprout = require('sprout')
+        path = require('path')
+        os = require('os')
+        mkdirp = require('mkdirp')
+        inquirer = require('inquirer')
+        template_dir = path.join(os.homedir(), '.config/glug')
+        mkdirp.sync template_dir
+        sprout = new Sprout(template_dir)
+        sprout.add('glug', 'https://github.com/glugjs/sprout-glug')
+      .then ->
+        sprout.init 'glug', directory,
+          questionnaire: inquirer.prompt.bind(inquirer)
+      .catch handle
 
   watch: (verbose = false) ->
     global.verbose = verbose
@@ -310,7 +315,7 @@ class Glug
       .then generate_file_list
       .then start_watcher
       .then render_all
-      .catch (err) -> throw err
+      .catch handle
 
   build: (verbose = false) ->
     global.verbose = verbose
@@ -322,8 +327,7 @@ class Glug
       .then resolve_locals
       .then generate_file_list
       .then render_all
-      .catch (err) -> throw err
-
+      .catch handle
 
 
 
