@@ -136,12 +136,13 @@ resolve_locals = ->
   for local_name, local of config.locals
     # if it is a promise
     if local.then?
-      console.log("it is a promise")
       promises[local_name] = local
 
+  console.log('waiting for locals to resolve...')
   # after all local promises are resolved
   Promise.props(promises).then (res) ->
     locals = res
+    console.log('locals finished')
 
 start_config_watcher = ->
   chokidar.watch(config_path).on 'change', ->
