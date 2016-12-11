@@ -36,6 +36,7 @@ output_dir = undefined
 paths = {}
 files = {}
 pipelines = {}
+locals = {}
 
 load_config = ->
   new Promise (resolve, reject) ->
@@ -129,6 +130,19 @@ prepare_output_dir = ->
     catch err
       reject err
 
+resolve_locals = ->
+  promises = {}
+
+  for local_name, local of config.locals
+    # if it is a promise
+    if local.then?
+      console.log("it is a promise")
+      promises[local_name] = local
+
+  # after all local promises are resolved
+  Promise.props(promises).then (res) ->
+    locals = res
+
 start_config_watcher = ->
   chokidar.watch(config_path).on 'change', ->
     load_config()
@@ -136,7 +150,7 @@ start_config_watcher = ->
       .then load_all_transformers
       .then generate_file_list
       .then render_all
-      .then bs.reload('*')
+      .then -> bs.reload('*')
 
 start_watcher = ->
   chokidar.watch(input_dir, {}).on 'all', (event, file) ->
@@ -185,7 +199,7 @@ render = (file, contents, transform, settings = {}) ->
       frontmatter,
       config.transformers[renderer.name])
 
-    renderer.renderAsync(contents, renderer_config, config.locals)
+    renderer.renderAsync(contents, renderer_config, locals)
       .then (contents) ->
         # l.debug "#{file.name}: finished rendering with #{renderer.name}"
         return resolve contents.body
@@ -290,8 +304,9 @@ class Glug
       .then start_config_watcher
       .then start_browser_sync
       .then load_all_transformers
-      .then generate_file_list
       .then prepare_output_dir
+      .then resolve_locals
+      .then generate_file_list
       .then start_watcher
       .then render_all
       .catch (err) -> throw err
@@ -302,8 +317,9 @@ class Glug
     require_dependencies()
       .then load_config
       .then load_all_transformers
-      .then generate_file_list
       .then prepare_output_dir
+      .then resolve_locals
+      .then generate_file_list
       .then render_all
       .catch (err) -> throw err
 
