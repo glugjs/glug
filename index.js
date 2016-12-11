@@ -2,6 +2,7 @@
 
 require('coffee-script/register')
 var glug = require('./glug.coffee')
+var program = require('commander')
 
 module.exports = glug
 
