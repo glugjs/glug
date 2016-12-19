@@ -7,7 +7,11 @@
     "Static Site"
   ],
   "scripts": {
-    "test": "mocha"
+    "test": "ava",
+    "posttest": "xo"
+  },
+  "ava": {
+    "verbose": true
   },
   "bin": {
     "glug": "./index.js"
@@ -19,15 +23,27 @@
     "chokidar": "^1.6.0",
     "coffee-script": "^1.11.1",
     "commander": "^2.9.0",
+    "elegant-spinner": "^1.0.1",
+    "figures": "^2.0.0",
     "fs-readdir-recursive": "^1.0.0",
     "glob": "^7.1.1",
     "graceful-fs": "^4.1.11",
     "gray-matter": "^2.0.2",
+    "hjson": "^2.3.1",
     "inquirer": "^2.0.0",
     "jstransformer": "^1.0.0",
+    "log-symbols": "^1.0.2",
+    "log-update": "^1.0.2",
     "logdown": "^1.4.2",
+    "merge": "^1.2.0",
     "mkdirp": "^0.5.1",
+    "ora": "^0.3.0",
+    "sleep": "^5.0.0",
     "sprout": "^1.2.0"
+  },
+  "xo": {
+    "space": true,
+    "semicolon": false
   },
   "repository": {
     "type": "git",
@@ -35,11 +51,8 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "chai": "^3.5.0",
-    "coffee": "^3.3.0",
-    "mocha": "^3.1.2",
-    "rimraf": "^2.5.4",
+    "ava": "^0.17.0",
     "sinon": "^1.17.6",
-    "uglify-js": "^2.7.4"
+    "xo": "^0.17.1"
   }
 }
