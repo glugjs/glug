@@ -18,7 +18,9 @@ if (require.main === module) {
   commands.init
     .description('set up a new project')
     .option('-v, --verbose', 'print more output')
-    .action(glug.init)
+    .action(function() {
+      glug.init(arguments[0], arguments[1].verbose)
+    })
 
   commands.watch
     .description('start a server')
