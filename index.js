@@ -4,16 +4,16 @@ var base_path = process.cwd()
 require('app-module-path').addPath(`${base_path}/node_modules`)
 var fs = require('graceful-fs')
 var path = require('path')
-var fork = require('child_process').fork
+var { fork } = require('child_process')
 var program = require('commander')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
-var Hjson = require('hjson');
+var Hjson = require('hjson')
 var chalk = require('chalk')
 var figures = require('figures')
 var spinner = require('elegant-spinner')
-var sleep = require('sleep').sleep
-// var merge = require('merge').recursive
+var { sleep } = require('sleep')
+var { recursive: merge } = require('merge')
 
 var json = function (data) {
   return JSON.stringify(data, null, 2)
@@ -38,8 +38,8 @@ setInterval(function () {
     renderers = chalk.gray(file.renderers.join(chalk.cyan(figures(' › '))))
     return `${char} ${chalk.bold(filename)} ${renderers}`
   }).join('\n')
-  logUpdate(string);
-}, 70);
+  logUpdate(string)
+}, 70)
 
 var handleErr = function (error) {
   if (error) {
@@ -86,7 +86,7 @@ var render = function () {
 }
 
 var readConfig = function () {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) =>
     fs.readFile('config.hjson', 'utf-8', (err, data) => {
       if (err) {
         return reject(err)
@@ -94,6 +94,8 @@ var readConfig = function () {
       data = Hjson.parse(data)
       resolve(data)
     })
+  ).then(data => {
+    console.log(data)
   })
 }
 
