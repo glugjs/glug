@@ -60,6 +60,7 @@ var getWorker = function () {
     return resolve(newWorker)
   })
 }
+
 var renderFile = function (file) {
   currentFiles[file] = {state: 'started'}
   currentFiles[file].renderers = ['stylus', 'autoprefixer', 'csso', 'clean-css']
