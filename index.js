@@ -5,7 +5,6 @@ require('app-module-path').addPath(`${base_path}/node_modules`)
 var fs = require('graceful-fs')
 var path = require('path')
 var { fork } = require('child_process')
-var program = require('commander')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
 var Hjson = require('hjson')
@@ -35,7 +34,8 @@ setInterval(function () {
     } else if (file.state === 'completed') {
       char = symbols.success
     }
-    renderers = chalk.gray(file.renderers.join(chalk.cyan(figures(' › '))))
+    renderers = chalk.gray(file.renderers
+      .join(chalk.cyan(figures(' › '))))
     return `${char} ${chalk.bold(filename)} ${renderers}`
   }).join('\n')
   logUpdate(string)
@@ -119,37 +119,10 @@ glug.build = function () {
   })
 }
 
-module.exports = glug
-
 // if called directly
 
 if (require.main === module) {
-  program.command('init <directory>')
-    .description('set up a new project')
-    .option('-v, --verbose', 'print more output')
-    .action(glug.init)
-
-  program.command('watch [directory]')
-    .description('start a server')
-    .option('-v, --verbose', 'print more output')
-    .alias('w')
-    .action(() => {
-      glug.watch(arguments[1].verbose)
-    })
-
-  program.command('build [directory]')
-    .description('build the project')
-    .option('-v, --verbose', 'print more output')
-    .alias('b')
-    .action(() => {
-      glug.build(arguments[1].verbose)
-    })
-
-  program
-    .version('0.0.14')
-    .parse(process.argv)
-
-  if (!process.argv.slice(2).length < 0) {
-    program.outputHelp()
-  }
+  require('./cli')(glug, process.argv)
 }
+
+module.exports = glug
