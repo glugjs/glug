@@ -7,6 +7,7 @@ var { join }= require('path')
 var { fork } = require('child_process')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
+var chokidar = require('chokidar')
 var Hjson = require('hjson')
 var chalk = require('chalk')
 var { sync: glob } = require('glob')
@@ -58,6 +59,8 @@ var updateOutput = function () {
       icon = symbols.success
     } else if (file.state === 'writing') {
       icon = chalk.green(file.spinner())
+    } else if (file.state === 'error') {
+      icon = symbols.error
     } else {
       icon = chalk.blue(file.spinner())
     }
@@ -65,14 +68,20 @@ var updateOutput = function () {
     renderers = chalk.gray(file.renderers
       .map(renderer => {
         if (renderer === file.current) {
-          return chalk.white.underline(renderer)
+          return chalk.cyan.underline(renderer)
         } else {
           return renderer
         }
       })
       .join(` ${chalk.cyan(figures('›'))} `))
 
-    return `${icon} ${chalk.bold(filename)} ${renderers}`
+    let string = `${icon} ${chalk.bold(filename)} ${renderers}`
+
+    if (file.state === 'error' && file.error) {
+      string += file.error
+    }
+
+    return string
   }).join('\n')
   logUpdate(string)
 }
@@ -122,40 +131,57 @@ var getWorker = function () {
  * Returns a promise for when it is done
  */
 var renderFile = function (file) {
-  files[file] = files[file] || {}
-  files[file].state = 'started'
+  return new Promise((resolve, reject) => {
+    files[file] = files[file] || {}
+    files[file].state = 'started'
 
-  getWorker().then(worker => {
-    worker.send({
-      filename: file,
-      file: files[file],
-      inputDir,
-      outputDir
-    })
+    getWorker().then(worker => {
+      worker.send({
+        filename: file,
+        file: files[file],
+        inputDir,
+        outputDir
+      })
 
-    worker.on('message', message => {
-      if (message === 'writing') {
-        files[file].current = null
-        files[file].state = 'writing'
-      } else if (message === 'done') {
-        files[file].state = 'completed'
-      } else if (message.match(/^transformer:/)) {
-        let transformer = message.replace(/^transformer:/, '')
-        files[file].current = transformer
-      } else if (message.match(/^print:/)) {
-        message = message.replace(/^print:/, '')
-        print(message)
-      }
+      worker.on('message', message => {
+        if (message === 'writing') {
+          files[file].current = null
+          files[file].state = 'writing'
+        } else if (message === 'done') {
+          files[file].state = 'completed'
+          return resolve()
+        } else if (message.transformer) {
+          files[file].current = message.transformer
+        } else if (message.error) {
+          files[file].state = 'error'
+          files[file].error = message.error
+          return reject()
+        } else if (message.print) {
+          print(message.print)
+        }
+      })
     })
   })
-    .catch(handleErr)
 }
 
 var render = function (config) {
   return new Promise((resolve, reject) => {
     for (file in files) {
       renderFile(file)
+        .catch(handleErr)
     }
+  })
+}
+
+let startWatcher = function () {
+  chokidar.watch(inputDir).on('change', (file) => {
+    file = file.replace(inputDir + '/', '')
+    file = file.replace(inputDir + '\\', '')
+    renderFile(file)
+      .then(() => {
+        // return bs.reload(`*.${out_format}`)
+      })
+      .catch(handleErr)
   })
 }
 
@@ -188,24 +214,24 @@ var readConfig = function () {
   })
 }
 
-var glug = {}
-
-glug.watch = function () {
-  return new Promise((resolve, reject) => {
-    print('watching')
-    readConfig()
-      .then(config => render(config))
-      .catch(handleErr)
-  })
-}
-
-glug.build = function () {
-  return new Promise((resolve, reject) => {
-    print('building')
-    readConfig()
-      .then(config => render(config))
-      .catch(handleErr)
-  })
+glug = {
+  watch() {
+    return new Promise((resolve, reject) => {
+      print('watching')
+      readConfig()
+        .then(startWatcher)
+        .then(config => render(config))
+        .catch(handleErr)
+    })
+  },
+  build() {
+    return new Promise((resolve, reject) => {
+      print('building')
+      readConfig()
+        .then(config => render(config))
+        .catch(handleErr)
+    })
+  }
 }
 
 // if called directly

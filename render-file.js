@@ -3,19 +3,19 @@ require('app-module-path').addPath(`${base_path}/node_modules`)
 
 var path = require('path')
 var fs = require('fs')
+var mkdirp = require('mkdirp')
 var { sleep } = require('sleep')
 var lazyRequire = require('lazy-require')
 var chalk = require('chalk')
 
-var inputDir, outputDir
+var inputDir, outputDir, currentTransformer
 
 var print = function () {
   var args = Array.prototype.slice.call(arguments)
-  process.send(`print:${args.join(' ')}`)
+  process.send({print: args.join('')})
 }
 
 var lrequire = function (packageName) {
-  // print(packageName)
   // var package = lazyRequire(packageName, {save: true})
   // if (package instanceof Error) {
   //   throw package.stack
@@ -41,12 +41,17 @@ var readFile = function (filename) {
 var writeFile = function (filename, contents) {
   return new Promise((resolve, reject) => {
     let outPath = path.join(outputDir, filename)
-    fs.writeFile(outPath, contents, 'utf8', (err) => {
+    mkdirp(path.dirname(outPath), err => {
       if (err) {
         return reject(err)
-      } else {
-        resolve()
       }
+      fs.writeFile(outPath, contents, 'utf8', (err) => {
+        if (err) {
+          return reject(err)
+        } else {
+          resolve()
+        }
+      })
     })
   })
 }
@@ -54,10 +59,12 @@ var writeFile = function (filename, contents) {
 var render = function(file, contents, transforms, settings = {}) {
   return new Promise((resolve, reject) => {
     var transform = transforms.shift()
-    process.send(`transformer:${transform}`)
+    currentTransformer = transform
+    process.send({transformer: transform})
     var transformer = jstransformer(
       lrequire(`jstransformer-${transform}`))
     transformer.renderAsync(contents, settings)
+      .catch(handleErr)
       .then(contents => {
         if (transforms.length > 0) {
           return render(file, contents.body, transforms)
@@ -72,7 +79,10 @@ var render = function(file, contents, transforms, settings = {}) {
 
 handleErr = function (error) {
   if (error) {
-    print(chalk.red(error.message, null, 2))
+    process.send({
+      error: chalk.red(`
+${chalk.bold(`Error from ${currentTransformer}`)}
+${error.message}`)})
   }
 }
 
@@ -89,4 +99,3 @@ process.on('message', data => {
     .then(() => process.send('done'))
     .catch(handleErr)
 })
-
