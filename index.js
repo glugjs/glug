@@ -88,6 +88,9 @@ var updateOutput = function () {
 
 setInterval(updateOutput, 50)
 
+/**
+ * Prints to the console, and resets the persistent log
+ */
 var print = function () {
   logUpdate.clear()
   console.log(...arguments)
@@ -164,6 +167,9 @@ var renderFile = function (file) {
   })
 }
 
+/**
+ * Renders all files
+ */
 var render = function (config) {
   return new Promise((resolve, reject) => {
     for (file in files) {
@@ -173,6 +179,9 @@ var render = function (config) {
   })
 }
 
+/**
+ * Starts the chokidar input file watcher
+ */
 let startWatcher = function () {
   chokidar.watch(inputDir).on('change', (file) => {
     file = file.replace(inputDir + '/', '')
@@ -185,6 +194,11 @@ let startWatcher = function () {
   })
 }
 
+/**
+ * Reads the config at `config.hjson`
+ * Returns a promise for the parsed config
+ * Sets up the global `files` variable
+ */
 var readConfig = function () {
   return new Promise((resolve, reject) =>
     fs.readFile('config.hjson', 'utf-8', (err, data) => {
@@ -214,6 +228,11 @@ var readConfig = function () {
   })
 }
 
+/**
+ * The exported glug object
+ * Has children `watch` and `build` which are functions
+ * TODO: Add `init`
+ */
 glug = {
   watch() {
     return new Promise((resolve, reject) => {
