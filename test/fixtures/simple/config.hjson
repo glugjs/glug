@@ -1,21 +1,21 @@
 {
-  "locals": {
-    "name": "Caleb"
+  locals: {
+    name: Caleb
   }
-  "files": {
-    "**/*.svg": "svgo"
-    "**/*.js": "uglify-js"
-    "**/*.coffee": "coffee-script | uglify-js"
-    "**/*.styl": {
-      "transforms": "stylus | autoprefixer | csso"
-      "depends_on": [
-        "**/*.css"
-        "**/*.styl"
+  files: {
+    **/*.svg: svgo
+    **/*.js: uglify-js
+    **/*.coffee: coffee-script | uglify-js
+    **/*.styl: {
+      transforms: stylus | autoprefixer | csso
+      depends_on: [
+        **/*.css
+        **/*.styl
       ]
     }
-    "**/*.pug": [
-      "pug"
-      "html-minifier"
+    **/*.pug: [
+      pug
+      html-minifier
     ]
   }
 }

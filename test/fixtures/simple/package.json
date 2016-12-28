@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "glug": "^0.0.14"
+    "glug": "^0.0.14",
+    "jstransformer-pug": "*",
+    "jstransformer-html-minifier": "*"
   }
 }

@@ -3,12 +3,13 @@
 var base_path = process.cwd()
 require('app-module-path').addPath(`${base_path}/node_modules`)
 var fs = require('graceful-fs')
-var path = require('path')
+var { join }= require('path')
 var { fork } = require('child_process')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
 var Hjson = require('hjson')
 var chalk = require('chalk')
+var { sync: glob } = require('glob')
 var figures = require('figures')
 var spinner = require('elegant-spinner')
 var { sleep } = require('sleep')
@@ -18,29 +19,76 @@ var json = function (data) {
   return JSON.stringify(data, null, 2)
 }
 
-var workers = []
-var openWorkers = []
-var currentFiles = {}
+var inputDir, outputDir
 
-setInterval(function () {
-  var string = Object.keys(currentFiles).map(filename => {
-    var file = currentFiles[filename]
-    var char
+var workers = []
+//  workers = [
+//    {
+//      open: false,
+//      worker: {worker}
+//    }
+//  ]
+
+var files = {}
+//  files = {
+//    'index.js': {
+//      renderers: ['babel', 'browserify']
+//      dependencyOf: []
+//    },
+//    'foo.js': {
+//      renderers: ['babel', 'browserify']
+//      dependencyOf: ['index.js']
+//    },
+//    'index.pug': {
+//      renderers: ['pug', 'html-minifier']
+//      dependencyOf: []
+//    }
+//  }
+
+var updateOutput = function () {
+  var string = Object.keys(files).map(filename => {
+    var file = files[filename]
+    var icon
+
     if (!file.spinner) {
       file.spinner = spinner()
     }
-    if (file.state === 'started') {
-      char = chalk.blue(file.spinner())
-    } else if (file.state === 'completed') {
-      char = symbols.success
+
+    if (file.state === 'completed') {
+      icon = symbols.success
+    } else if (file.state === 'writing') {
+      icon = chalk.green(file.spinner())
+    } else {
+      icon = chalk.blue(file.spinner())
     }
+
     renderers = chalk.gray(file.renderers
-      .join(chalk.cyan(figures(' › '))))
-    return `${char} ${chalk.bold(filename)} ${renderers}`
+      .map(renderer => {
+        if (renderer === file.current) {
+          return chalk.white.underline(renderer)
+        } else {
+          return renderer
+        }
+      })
+      .join(` ${chalk.cyan(figures('›'))} `))
+
+    return `${icon} ${chalk.bold(filename)} ${renderers}`
   }).join('\n')
   logUpdate(string)
-}, 70)
+}
 
+setInterval(updateOutput, 50)
+
+var print = function () {
+  logUpdate.clear()
+  console.log(...arguments)
+  updateOutput()
+}
+
+/**
+ * Will throw an error, if it exists
+ * @param {(Object|string|null)} error - The error to throw or null
+ */ 
 var handleErr = function (error) {
   if (error) {
     if (error.stack) {
@@ -50,39 +98,64 @@ var handleErr = function (error) {
   }
 }
 
+/**
+ * Returns a promise for a worker
+ */
 var getWorker = function () {
   return new Promise((resolve, reject) => {
-    if (openWorkers[0]) {
-      return resolve(workers[openWorker[0]])
+    for (let worker of workers) {
+      if (worker.open) {
+        worker.open = false
+        return resolve(worker)
+      }
     }
-    var newWorker = fork(path.join(__dirname, 'render-file'))
-    workers.push(newWorker)
-    return resolve(newWorker)
+    workers.push({
+      worker: fork(join(__dirname, 'render-file')),
+      open: false
+    })
+    resolve(workers[workers.length - 1].worker)
   })
 }
 
+/**
+ * Renders the given file
+ * Returns a promise for when it is done
+ */
 var renderFile = function (file) {
-  currentFiles[file] = {state: 'started'}
-  currentFiles[file].renderers = ['stylus', 'autoprefixer', 'csso', 'clean-css']
-  getWorker()
-    .then(worker => {
-      worker.send({file, data: currentFiles[file]})
-      worker.on('message', message => {
-        if (message === 'done') {
-          currentFiles[file].state = 'completed'
-        }
-      })
+  files[file] = files[file] || {}
+  files[file].state = 'started'
+
+  getWorker().then(worker => {
+    worker.send({
+      filename: file,
+      file: files[file],
+      inputDir,
+      outputDir
     })
+
+    worker.on('message', message => {
+      if (message === 'writing') {
+        files[file].current = null
+        files[file].state = 'writing'
+      } else if (message === 'done') {
+        files[file].state = 'completed'
+      } else if (message.match(/^transformer:/)) {
+        let transformer = message.replace(/^transformer:/, '')
+        files[file].current = transformer
+      } else if (message.match(/^print:/)) {
+        message = message.replace(/^print:/, '')
+        print(message)
+      }
+    })
+  })
     .catch(handleErr)
 }
 
-var render = function () {
+var render = function (config) {
   return new Promise((resolve, reject) => {
-    renderFile('index.js')
-    renderFile('foo.js')
-    renderFile('index.ts')
-    renderFile('index.html')
-    renderFile('logo.svg')
+    for (file in files) {
+      renderFile(file)
+    }
   })
 }
 
@@ -92,11 +165,26 @@ var readConfig = function () {
       if (err) {
         return reject(err)
       }
-      data = Hjson.parse(data)
-      resolve(data)
+      resolve(Hjson.parse(data))
     })
-  ).then(data => {
-    console.log(data)
+  ).then(config => {
+    inputDir = join(process.cwd(), config.inputDir || 'app')
+    outputDir = join(process.cwd(), config.outputDir || 'public')
+    for (let fileGroup in config.files) {
+      let group = config.files[fileGroup]
+      let renderers
+      if (group.transforms) {
+        group = group.transforms
+      }
+      if (typeof group === 'string') {
+        renderers = group.split(' | ')
+      } else if (Array.isArray(group)) {
+        renderers = group
+      }
+      for (let file of glob(fileGroup, {cwd: inputDir})) {
+        files[file] = {renderers}
+      }
+    }
   })
 }
 
@@ -104,7 +192,7 @@ var glug = {}
 
 glug.watch = function () {
   return new Promise((resolve, reject) => {
-    console.log('watching')
+    print('watching')
     readConfig()
       .then(config => render(config))
       .catch(handleErr)
@@ -113,7 +201,7 @@ glug.watch = function () {
 
 glug.build = function () {
   return new Promise((resolve, reject) => {
-    console.log('building')
+    print('building')
     readConfig()
       .then(config => render(config))
       .catch(handleErr)
