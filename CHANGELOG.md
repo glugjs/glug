@@ -8,5 +8,10 @@
   - Current transformer
 - Config is in hjson
 
+TODO:
+  - Output file extensions are determined automatically
+  - Can customize output file extensions
+  - Dependencies can be specified for files
+
 # 0.0.1-0.0.14
 - Written in CoffeeScript
