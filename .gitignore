@@ -3,3 +3,4 @@ node_modules
 yarn-error.log
 test/init
 yarn.lock
+test/fixtures/*/public
