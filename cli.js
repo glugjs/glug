@@ -24,7 +24,7 @@ module.exports = function(glug, options) {
     })
 
   program
-    .version('0.0.14')
+    .version(require('./package.json').version)
     .parse(options)
 
   if (!options.slice(2).length < 0) {
