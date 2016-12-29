@@ -94,7 +94,7 @@ process.on('message', data => {
       data.filename, contents, data.file.renderers))
     .then(contents => {
       process.send('writing')
-      return writeFile(data.filename, contents.body)
+      return writeFile(data.file.outputPath, contents.body)
     })
     .then(() => process.send('done'))
     .catch(handleErr)

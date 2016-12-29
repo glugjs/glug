@@ -3,7 +3,7 @@
 var base_path = process.cwd()
 require('app-module-path').addPath(`${base_path}/node_modules`)
 var fs = require('graceful-fs')
-var { join }= require('path')
+var path = require('path')
 var { fork } = require('child_process')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
@@ -45,6 +45,10 @@ var files = {}
 //      dependencyOf: []
 //    }
 //  }
+
+var last = function (array) {
+  return array[array.length - 1]
+}
 
 var updateOutput = function () {
   var string = Object.keys(files).map(filename => {
@@ -122,7 +126,7 @@ var getWorker = function () {
       }
     }
     workers.push({
-      worker: fork(join(__dirname, 'render-file')),
+      worker: fork(path.join(__dirname, 'render-file')),
       open: false
     })
     resolve(workers[workers.length - 1].worker)
@@ -208,8 +212,8 @@ var readConfig = function () {
       resolve(Hjson.parse(data))
     })
   ).then(config => {
-    inputDir = join(process.cwd(), config.inputDir || 'app')
-    outputDir = join(process.cwd(), config.outputDir || 'public')
+    inputDir = path.join(process.cwd(), config.inputDir || 'app')
+    outputDir = path.join(process.cwd(), config.outputDir || 'public')
     for (let fileGroup in config.files) {
       let group = config.files[fileGroup]
       let renderers
@@ -221,8 +225,14 @@ var readConfig = function () {
       } else if (Array.isArray(group)) {
         renderers = group
       }
+      outputFormat = require(`jstransformer-${last(renderers)}`).outputFormat
       for (let file of glob(fileGroup, {cwd: inputDir})) {
-        files[file] = {renderers}
+        var outputPath = file.replace(path.extname(file), '.' + outputFormat)
+        files[file] = {
+          renderers,
+          inputPath: file,
+          outputPath
+        }
       }
     }
   })

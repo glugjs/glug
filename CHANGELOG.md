@@ -12,12 +12,12 @@
   - Status / Loading sign
   - Current transformer
 - Config is in hjson
+- Output file extensions are determined automatically
 
-TODO:
-  - Output file extensions are determined automatically
-  - Can customize output file extensions
-  - Dependencies can be specified for files
-  - Add tests
+## TODO:
+- Can customize output file extensions
+- Dependencies can be specified for files
+- Add tests
 
 # 0.0.1-0.0.14
 - Written in CoffeeScript
