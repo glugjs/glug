@@ -9,6 +9,7 @@ var logUpdate = require('log-update')
 var symbols = require('log-symbols')
 var chokidar = require('chokidar')
 var Hjson = require('hjson')
+var browserSync = require('browser-sync')
 var chalk = require('chalk')
 var { sync: glob } = require('glob')
 var figures = require('figures')
@@ -20,7 +21,7 @@ var json = function (data) {
   return JSON.stringify(data, null, 2)
 }
 
-var inputDir, outputDir
+var inputDir, outputDir, bs
 
 var workers = []
 //  workers = [
@@ -97,9 +98,14 @@ setInterval(updateOutput, 50)
  */
 var print = function () {
   logUpdate.clear()
-  console.log(...arguments)
+  // console.info is equivalent to console.log
+  // using console.info because console.log is overwritten
+  // and we don't want infinite loop
+  console.info(...arguments)
   updateOutput()
 }
+
+global.console.log = print
 
 /**
  * Will throw an error, if it exists
@@ -151,20 +157,21 @@ var renderFile = function (file) {
       })
 
       worker.on('message', message => {
-        if (message === 'writing') {
-          files[file].current = null
-          files[file].state = 'writing'
-        } else if (message === 'done') {
-          files[file].state = 'completed'
-          return resolve()
-        } else if (message.transformer) {
+        if (message.transformer) {
           files[file].current = message.transformer
+        } else if (message.print) {
+          print(message.print)
         } else if (message.error) {
           files[file].state = 'error'
           files[file].error = message.error
           return reject()
-        } else if (message.print) {
-          print(message.print)
+        } else if (message === 'writing') {
+          files[file].current = null
+          files[file].state = 'writing'
+        } else if (message === 'done') {
+          files[file].state = 'completed'
+          worker.open = true
+          return resolve()
         }
       })
     })
@@ -184,6 +191,14 @@ var render = function (config) {
 }
 
 /**
+ * Starts browser sync in the global `bs`
+ */
+var startBrowserSync = function () {
+  bs = browserSync.create()
+  bs.init({server: outputDir})
+}
+
+/**
  * Starts the chokidar input file watcher
  */
 let startWatcher = function () {
@@ -191,9 +206,7 @@ let startWatcher = function () {
     file = file.replace(inputDir + '/', '')
     file = file.replace(inputDir + '\\', '')
     renderFile(file)
-      .then(() => {
-        // return bs.reload(`*.${out_format}`)
-      })
+      .then(() => bs.reload(file))
       .catch(handleErr)
   })
 }
@@ -248,6 +261,7 @@ glug = {
     return new Promise((resolve, reject) => {
       print('watching')
       readConfig()
+        .then(startBrowserSync)
         .then(startWatcher)
         .then(config => render(config))
         .catch(handleErr)
