@@ -217,7 +217,7 @@ let startWatcher = function () {
     file = file.replace(config.inputDir + '/', '')
     file = file.replace(config.inputDir + '\\', '')
     renderFile(file)
-      .then(() => bs.reload(file))
+      .then(() => bs.reload(files[file].outputPath))
       .catch(handleErr)
   })
 }

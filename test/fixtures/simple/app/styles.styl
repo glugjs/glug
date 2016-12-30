@@ -1,13 +1,39 @@
 red = #d81313
+blue = #0d47a1
+lato = Lato, sans-serif
 
-body, html
+body
+  display: flex
+  align-items: center
+  justify-content: center
+  font-family: lato
   padding: 0
   margin: 0
   height: 100vh
-  width: 200vw
+  background-color: red
+  // animation: change-bg 1s ease-in-out infinite alternate
+
+@keyframes spin
+  0%
+    color: red
+    transform: rotate(-40deg)
+
+  100%
+    color: blue
+    transform: rotate(10deg) scale(1.4)
+
+@keyframes change-bg
+  0%
+    background-color: blue
+
+  100%
+    background-color: red
 
 h1
   margin: 0
-  color: green
-  font-weight: 900
-  font-size: 100vh
+  color: blue
+  font-weight: 500
+  font-size: 24vmin
+  text-align: center
+  animation: spin 1s infinite alternate ease-in-out
+
