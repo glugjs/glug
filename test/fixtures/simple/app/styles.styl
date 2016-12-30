@@ -1,39 +1,60 @@
-red = #d81313
-blue = #0d47a1
+term = {
+  background: #282828
+  title: #bfbfbf
+  foreground: #ebdbb2
+  toolbar-height: 25px
+}
+
 lato = Lato, sans-serif
+mac = 'Helvetica Neue', Helvetica, Arial, Lato
+monospace = 'Mononoki', 'Source Code Pro', unquote('monospace')
 
 body
-  display: flex
-  align-items: center
-  justify-content: center
+  background-color: white
   font-family: lato
-  padding: 0
-  margin: 0
-  height: 100vh
-  background-color: red
-  // animation: change-bg 1s ease-in-out infinite alternate
-
-@keyframes spin
-  0%
-    color: red
-    transform: rotate(-40deg)
-
-  100%
-    color: blue
-    transform: rotate(10deg) scale(1.4)
-
-@keyframes change-bg
-  0%
-    background-color: blue
-
-  100%
-    background-color: red
 
 h1
-  margin: 0
-  color: blue
-  font-weight: 500
-  font-size: 24vmin
+h2
   text-align: center
-  animation: spin 1s infinite alternate ease-in-out
+  color: red
+
+h1
+  color: blue
+
+.window
+  font-family: mac
+  box-shadow: 5px 5px 40px alpha(black, .7)
+  overflow: hidden
+  border-radius: 4px
+  width: 500px
+
+  .icon
+    line-height: term.toolbar-height
+    display: inline-block
+    // margin: 0 3px
+    width: 15px
+    height: @width
+    border-radius: 50%
+    background-color: red
+
+  .title
+    line-height: term.toolbar-height
+    // position: absolute
+    // left: 50%
+    // top: 50%
+    // transform: translate(-50%, -50%)
+
+  .toolbar
+    // position: relative
+    height: term.toolbar-height
+    background-color: term.title
+
+  .contents
+    font-family: monospace
+    padding: 10px
+    background-color: term.background
+    color: term.foreground
+
+    &::before
+      contents: '$ '
 
