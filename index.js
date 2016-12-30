@@ -93,7 +93,7 @@ var updateOutput = function () {
   logUpdate(string)
 }
 
-setInterval(updateOutput, 100)
+setInterval(updateOutput, 150)
 
 /**
  * Prints to the console, and resets the persistent log

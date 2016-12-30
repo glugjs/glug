@@ -1,9 +1,20 @@
 term = {
   background: #282828
+  icon-width: 15px
   title: #bfbfbf
+  title-color: #484848
   foreground: #ebdbb2
-  toolbar-height: 25px
+  toolbar-height: 27px
 }
+
+term.toolbar-margin = ((term.toolbar-height - term.icon-width) / 2)
+term.close-hover = red
+term.min-hover   = orange
+term.max-hover   = green
+term.icon-alpha = 50%
+term.close = alpha(term.close-hover, term.icon-alpha)
+term.min   = alpha(term.min-hover, term.icon-alpha)
+term.max   = alpha(term.max-hover, term.icon-alpha)
 
 lato = Lato, sans-serif
 mac = 'Helvetica Neue', Helvetica, Arial, Lato
@@ -12,6 +23,7 @@ monospace = 'Mononoki', 'Source Code Pro', unquote('monospace')
 body
   background-color: white
   font-family: lato
+  min-height: 150vh
 
 h1
 h2
@@ -22,34 +34,58 @@ h1
   color: blue
 
 .window
+  position: absolute
+  left: 50%
+  top: calc(100vh - 100px)
+  transform: translateX(-50%)
   font-family: mac
-  box-shadow: 5px 5px 40px alpha(black, .7)
+  box-shadow: 5px 5px 45px alpha(black, .75)
   overflow: hidden
   border-radius: 4px
   width: 500px
 
+  pre
+    margin: 0
+
   .icon
     line-height: term.toolbar-height
     display: inline-block
-    // margin: 0 3px
-    width: 15px
-    height: @width
+    margin: term.toolbar-margin
+    margin-right: 0
+    width: term.icon-width
+    height: term.icon-width
     border-radius: 50%
-    background-color: red
+
+    &.close
+      background-color: term.close
+      &:hover
+        background-color: term.close-hover
+
+    &.min
+      background-color: term.min
+      &:hover
+        background-color: term.min-hover
+
+    &.max
+      background-color: term.max
+      &:hover
+        background-color: term.max-hover
 
   .title
     line-height: term.toolbar-height
-    // position: absolute
-    // left: 50%
-    // top: 50%
-    // transform: translate(-50%, -50%)
+    position: absolute
+    left: 50%
+    top: 50%
+    transform: translate(-50%, -50%)
+    color: term.title-color
 
   .toolbar
-    // position: relative
+    position: relative
     height: term.toolbar-height
     background-color: term.title
 
   .contents
+    overflow-x: auto
     font-family: monospace
     padding: 10px
     background-color: term.background
@@ -58,3 +94,5 @@ h1
     &::before
       contents: '$ '
 
+    &::-webkit-scrollbar
+      display: none
