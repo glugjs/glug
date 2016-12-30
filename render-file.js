@@ -1,39 +1,38 @@
-var base_path = process.cwd()
-require('app-module-path').addPath(`${base_path}/node_modules`)
+var basePath = process.cwd()
+require('app-module-path').addPath(`${basePath}/node_modules`)
 
 var path = require('path')
-var fs = require('fs')
+var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
-var { sleep } = require('sleep')
-var lazyRequire = require('lazy-require')
 var chalk = require('chalk')
+var jstransformer = require('jstransformer')
 
-var inputDir, outputDir, currentTransformer
+var inputDir
+var outputDir
+// var currentFile
+var currentTransformer
+var jstransformers = {}
 
-var print = function () {
-  var args = Array.prototype.slice.call(arguments)
-  process.send({print: args.join('')})
+// var print = function () {
+//   var args = Array.prototype.slice.call(arguments)
+//   process.send({print: `${currentFile}: ${args.join('')}`})
+// }
+
+var handleErr = function (error) {
+  if (error) {
+    process.send({error: chalk.red(`
+${chalk.bold(`Error from ${currentTransformer}`)}
+${error.message}`)})
+  }
 }
-
-var lrequire = function (packageName) {
-  // var package = lazyRequire(packageName, {save: true})
-  // if (package instanceof Error) {
-  //   throw package.stack
-  // }
-  // return package
-  return require(packageName)
-}
-
-var jstransformer = lrequire('jstransformer')
 
 var readFile = function (filename) {
   return new Promise((resolve, reject) => {
     fs.readFile(path.join(inputDir, filename), 'utf8', (err, data) => {
       if (err) {
         return reject(err)
-      } else {
-        resolve(data)
       }
+      resolve(data)
     })
   })
 }
@@ -45,24 +44,27 @@ var writeFile = function (filename, contents) {
       if (err) {
         return reject(err)
       }
-      fs.writeFile(outPath, contents, 'utf8', (err) => {
+      fs.writeFile(outPath, contents, 'utf8', err => {
         if (err) {
           return reject(err)
-        } else {
-          resolve()
         }
+        resolve()
       })
     })
   })
 }
 
-var render = function(file, contents, transforms, settings = {}) {
-  return new Promise((resolve, reject) => {
+var render = function (file, contents, transforms, settings = {}) {
+  return new Promise(resolve => {
     var transform = transforms.shift()
     currentTransformer = transform
     process.send({transformer: transform})
-    var transformer = jstransformer(
-      lrequire(`jstransformer-${transform}`))
+    if (!jstransformers[transform]) {
+      jstransformers[transform] =
+        // eslint-disable-next-line import/no-dynamic-require
+        jstransformer(require(`jstransformer-${transform}`))
+    }
+    var transformer = jstransformers[transform]
     transformer.renderAsync(contents, settings)
       .catch(handleErr)
       .then(contents => {
@@ -77,18 +79,10 @@ var render = function(file, contents, transforms, settings = {}) {
   })
 }
 
-handleErr = function (error) {
-  if (error) {
-    process.send({
-      error: chalk.red(`
-${chalk.bold(`Error from ${currentTransformer}`)}
-${error.message}`)})
-  }
-}
-
 process.on('message', data => {
   inputDir = data.inputDir
   outputDir = data.outputDir
+  // currentFile = data.filename
   readFile(data.filename)
     .then(contents => render(
       data.filename, contents, data.file.renderers))

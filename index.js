@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 
-var base_path = process.cwd()
-require('app-module-path').addPath(`${base_path}/node_modules`)
-var fs = require('graceful-fs')
+var basePath = process.cwd()
+require('app-module-path').addPath(`${basePath}/node_modules`)
 var path = require('path')
-var { fork } = require('child_process')
+var {fork} = require('child_process')
+var fs = require('graceful-fs')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
 var chokidar = require('chokidar')
 var Hjson = require('hjson')
 var browserSync = require('browser-sync')
 var chalk = require('chalk')
-var { sync: glob } = require('glob')
+var {sync: glob} = require('glob')
 var figures = require('figures')
 var spinner = require('elegant-spinner')
-var { sleep } = require('sleep')
-var { recursive: merge } = require('merge')
+var {recursive: merge} = require('merge')
 
-var json = function (data) {
-  return JSON.stringify(data, null, 2)
+var bs
+var config
+
+var defaultConfig = {
+  inputDir: 'app',
+  outputDir: 'public',
+  locals: {},
+  files: {},
 }
-
-var inputDir, outputDir, bs
 
 var workers = []
 //  workers = [
@@ -70,13 +73,12 @@ var updateOutput = function () {
       icon = chalk.blue(file.spinner())
     }
 
-    renderers = chalk.gray(file.renderers
+    let renderers = chalk.gray(file.renderers
       .map(renderer => {
         if (renderer === file.current) {
           return chalk.cyan.underline(renderer)
-        } else {
-          return renderer
         }
+        return renderer
       })
       .join(` ${chalk.cyan(figures('›'))} `))
 
@@ -110,13 +112,13 @@ global.console.log = print
 /**
  * Will throw an error, if it exists
  * @param {(Object|string|null)} error - The error to throw or null
- */ 
+ */
 var handleErr = function (error) {
   if (error) {
     if (error.stack) {
       error = error.stack
     }
-    throw error
+    print(chalk.red(error))
   }
 }
 
@@ -124,7 +126,7 @@ var handleErr = function (error) {
  * Returns a promise for a worker
  */
 var getWorker = function () {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     for (let worker of workers) {
       if (worker.open) {
         worker.open = false
@@ -152,8 +154,8 @@ var renderFile = function (file) {
       worker.send({
         filename: file,
         file: files[file],
-        inputDir,
-        outputDir
+        inputDir: config.inputDir,
+        outputDir: config.outputDir
       })
 
       worker.on('message', message => {
@@ -181,11 +183,13 @@ var renderFile = function (file) {
 /**
  * Renders all files
  */
-var render = function (config) {
-  return new Promise((resolve, reject) => {
-    for (file in files) {
-      renderFile(file)
-        .catch(handleErr)
+var render = function () {
+  return new Promise(() => {
+    for (let file in files) {
+      if ({}.hasOwnProperty.call(files, file)) {
+        renderFile(file)
+          .catch(handleErr)
+      }
     }
   })
 }
@@ -194,17 +198,24 @@ var render = function (config) {
  * Starts browser sync in the global `bs`
  */
 var startBrowserSync = function () {
+  // https://www.browsersync.io/docs/options
+  var defaultBrowserSyncConfig = {
+    port: 1234,
+    logLevel: 'warn',
+    server: config.outputDir
+  }
+
   bs = browserSync.create()
-  bs.init({server: outputDir})
+  bs.init(merge(defaultBrowserSyncConfig, config.browserSync))
 }
 
 /**
  * Starts the chokidar input file watcher
  */
 let startWatcher = function () {
-  chokidar.watch(inputDir).on('change', (file) => {
-    file = file.replace(inputDir + '/', '')
-    file = file.replace(inputDir + '\\', '')
+  chokidar.watch(config.inputDir).on('change', file => {
+    file = file.replace(config.inputDir + '/', '')
+    file = file.replace(config.inputDir + '\\', '')
     renderFile(file)
       .then(() => bs.reload(file))
       .catch(handleErr)
@@ -220,34 +231,58 @@ var readConfig = function () {
   return new Promise((resolve, reject) =>
     fs.readFile('config.hjson', 'utf-8', (err, data) => {
       if (err) {
+        if (err.message ===
+          'ENOENT: no such file or directory, open \'config.hjson\'') {
+          return reject('Can\'t find config at config.hjson')
+        }
         return reject(err)
       }
       resolve(Hjson.parse(data))
     })
-  ).then(config => {
-    inputDir = path.join(process.cwd(), config.inputDir || 'app')
-    outputDir = path.join(process.cwd(), config.outputDir || 'public')
+  ).then(newConfig => {
+    config = merge(defaultConfig, newConfig)
+  }).then(() => {
     for (let fileGroup in config.files) {
-      let group = config.files[fileGroup]
-      let renderers
-      if (group.transforms) {
-        group = group.transforms
-      }
-      if (typeof group === 'string') {
-        renderers = group.split(' | ')
-      } else if (Array.isArray(group)) {
-        renderers = group
-      }
-      outputFormat = require(`jstransformer-${last(renderers)}`).outputFormat
-      for (let file of glob(fileGroup, {cwd: inputDir})) {
-        var outputPath = file.replace(path.extname(file), '.' + outputFormat)
-        files[file] = {
-          renderers,
-          inputPath: file,
-          outputPath
+      if ({}.hasOwnProperty.call(config.files, fileGroup)) {
+        let group = config.files[fileGroup]
+        let renderers
+
+        if (group.transforms) {
+          group = group.transforms
+        }
+
+        if (typeof group === 'string') {
+          renderers = group.split(' | ')
+        } else if (Array.isArray(group)) {
+          renderers = group
+        }
+
+        let outputFormat =
+          // eslint-disable-next-line import/no-dynamic-require
+          require(`jstransformer-${[last(renderers)]}`).outputFormat
+
+        for (let file of glob(fileGroup, {cwd: config.inputDir})) {
+          let outputPath = file.replace(path.extname(file), '.' + outputFormat)
+          files[file] = {
+            renderers,
+            inputPath: file,
+            outputPath
+          }
         }
       }
     }
+  })
+}
+
+var startConfigWatcher = function () {
+  chokidar.watch('config.hjson').on('change', file => {
+    print(arguments)
+    // print('reloading config')
+    // readConfig()
+    //   .then(() => {
+    //     startBrowserSync()
+    //     render()
+    //   })
   })
 }
 
@@ -256,24 +291,20 @@ var readConfig = function () {
  * Has children `watch` and `build` which are functions
  * TODO: Add `init`
  */
-glug = {
+var glug = {
   watch() {
-    return new Promise((resolve, reject) => {
-      print('watching')
-      readConfig()
-        .then(startBrowserSync)
-        .then(startWatcher)
-        .then(config => render(config))
-        .catch(handleErr)
-    })
+    print('watching')
+    return readConfig()
+      .then(startBrowserSync)
+      .then(startWatcher)
+      .then(render)
+      .catch(handleErr)
   },
   build() {
-    return new Promise((resolve, reject) => {
-      print('building')
-      readConfig()
-        .then(config => render(config))
-        .catch(handleErr)
-    })
+    print('building')
+    return readConfig()
+      .then(render)
+      .catch(handleErr)
   }
 }
 

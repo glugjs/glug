@@ -1,7 +1,15 @@
 var program = require('commander')
 
-module.exports = function(glug, options) {
+var handleErr = function (error) {
+  if (error) {
+    if (error.stack) {
+      error = error.stack
+    }
+    throw error
+  }
+}
 
+module.exports = function (glug, options) {
   program.command('init <directory>')
     .description('set up a new project')
     .option('-v, --verbose', 'print more output')
@@ -13,6 +21,7 @@ module.exports = function(glug, options) {
     .alias('w')
     .action(() => {
       glug.watch(arguments[1].verbose)
+        .catch(handleErr)
     })
 
   program.command('build [directory]')
@@ -21,6 +30,7 @@ module.exports = function(glug, options) {
     .alias('b')
     .action(() => {
       glug.build(arguments[1].verbose)
+        .catch(handleErr)
     })
 
   program

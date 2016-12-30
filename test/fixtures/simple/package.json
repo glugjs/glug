@@ -1,7 +1,10 @@
 {
   "dependencies": {
     "glug": "^0.0.14",
-    "jstransformer-pug": "*",
-    "jstransformer-html-minifier": "*"
+    "jstransformer-autoprefixer": "^1.1.2",
+    "jstransformer-csso": "0.0.1",
+    "jstransformer-html-minifier": "^1.1.0",
+    "jstransformer-pug": "^0.2.2",
+    "jstransformer-stylus": "^1.3.0"
   }
 }
