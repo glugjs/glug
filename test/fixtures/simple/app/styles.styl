@@ -1,20 +1,28 @@
+*, *::before, *::after
+  box-sizing: border-box
+
 term = {
   background: #282828
-  icon-width: 15px
-  title: #bfbfbf
-  title-color: #484848
+  icon-width: 13px
+  toolbar: linear-gradient(#e0e0e0, #c3c3c3)
+  title-color: #4e4e4e
   foreground: #ebdbb2
   toolbar-height: 27px
+  close: {
+    bg: #fc5e59
+    border: #e24a46
+  }
+  min: {
+    bg: #fdbb3f
+    border: #dfa84a
+  }
+  max: {
+    bg: #31c748
+    border: #5abb65
+  }
 }
 
-term.toolbar-margin = ((term.toolbar-height - term.icon-width) / 2)
-term.close-hover = red
-term.min-hover   = orange
-term.max-hover   = green
-term.icon-alpha = 50%
-term.close = alpha(term.close-hover, term.icon-alpha)
-term.min   = alpha(term.min-hover, term.icon-alpha)
-term.max   = alpha(term.max-hover, term.icon-alpha)
+term.toolbar-margin = ((term.toolbar-height - term.icon-width - 2px) / 2)
 
 lato = Lato, sans-serif
 mac = 'Helvetica Neue', Helvetica, Arial, Lato
@@ -34,12 +42,13 @@ h1
   color: blue
 
 .window
+  border: 1px solid #a1a1a1
   position: absolute
   left: 50%
   top: calc(100vh - 100px)
   transform: translateX(-50%)
   font-family: mac
-  box-shadow: 5px 5px 45px alpha(black, .75)
+  box-shadow: -10px 13px 48px 4px alpha(black, .7)
   overflow: hidden
   border-radius: 4px
   width: 500px
@@ -47,6 +56,12 @@ h1
 
   pre
     margin: 0
+
+    &::selection
+      opacity: 1
+      background-color: white
+      color: term.background
+
 
   .icon
     line-height: term.toolbar-height
@@ -58,21 +73,19 @@ h1
     border-radius: 50%
 
     &.close
-      background-color: term.close
-      &:hover
-        background-color: term.close-hover
+      background-color: term.close.bg
+      border: 1px solid term.close.border
 
     &.min
-      background-color: term.min
-      &:hover
-        background-color: term.min-hover
+      background-color: term.min.bg
+      border: 1px solid term.min.border
 
     &.max
-      background-color: term.max
-      &:hover
-        background-color: term.max-hover
+      background-color: term.max.bg
+      border: 1px solid term.max.border
 
   .title
+    font-size: 15px
     user-select: none
     line-height: term.toolbar-height
     position: absolute
@@ -82,14 +95,15 @@ h1
     color: term.title-color
 
   .toolbar
+    border-bottom: 2px solid #7e7e7e
     position: relative
     height: term.toolbar-height
-    background-color: term.title
+    background: term.toolbar
 
   .contents
     overflow-x: auto
     font-family: monospace
-    padding: 10px
+    padding: 5px
     background-color: term.background
     color: term.foreground
 

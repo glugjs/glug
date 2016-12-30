@@ -7,15 +7,15 @@ var mkdirp = require('mkdirp')
 var chalk = require('chalk')
 var jstransformer = require('jstransformer')
 
+var options
 var inputDir
 var outputDir
-// var currentFile
 var currentTransformer
 var jstransformers = {}
 
 // var print = function () {
 //   var args = Array.prototype.slice.call(arguments)
-//   process.send({print: `${currentFile}: ${args.join('')}`})
+//   process.send({print: args.join('')})
 // }
 
 var handleErr = function (error) {
@@ -54,7 +54,7 @@ var writeFile = function (filename, contents) {
   })
 }
 
-var render = function (file, contents, transforms, settings = {}) {
+var render = function (file, contents, transforms) {
   return new Promise(resolve => {
     var transform = transforms.shift()
     currentTransformer = transform
@@ -65,7 +65,7 @@ var render = function (file, contents, transforms, settings = {}) {
         jstransformer(require(`jstransformer-${transform}`))
     }
     var transformer = jstransformers[transform]
-    transformer.renderAsync(contents, settings)
+    transformer.renderAsync(contents, options[transform] || {})
       .catch(handleErr)
       .then(contents => {
         if (transforms.length > 0) {
@@ -82,7 +82,7 @@ var render = function (file, contents, transforms, settings = {}) {
 process.on('message', data => {
   inputDir = data.inputDir
   outputDir = data.outputDir
-  // currentFile = data.filename
+  options = data.options || {}
   readFile(data.filename)
     .then(contents => render(
       data.filename, contents, data.file.renderers))

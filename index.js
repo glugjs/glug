@@ -20,6 +20,7 @@ var bs
 var config
 
 var defaultConfig = {
+  transformers: {},
   inputDir: 'app',
   outputDir: 'public',
   locals: {},
@@ -155,7 +156,8 @@ var renderFile = function (file) {
         filename: file,
         file: files[file],
         inputDir: config.inputDir,
-        outputDir: config.outputDir
+        outputDir: config.outputDir,
+        options: config.transformers
       })
 
       worker.on('message', message => {

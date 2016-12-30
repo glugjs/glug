@@ -5,6 +5,7 @@
     "jstransformer-csso": "0.0.1",
     "jstransformer-html-minifier": "^1.1.0",
     "jstransformer-pug": "^0.2.2",
-    "jstransformer-stylus": "^1.3.0"
+    "jstransformer-stylus": "^1.3.0",
+    "jstransformer-babel": "*"
   }
 }

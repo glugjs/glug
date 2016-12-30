@@ -6,6 +6,13 @@
   locals: {
     name: Caleb
   }
+  transformers: {
+    babel: {
+      presets: [
+        latest
+      ]
+    }
+  }
   files: {
     **/*.styl: {
       transforms: stylus | autoprefixer | csso
@@ -18,5 +25,6 @@
       pug
       html-minifier
     ]
+    **/*.js: babel
   }
 }
