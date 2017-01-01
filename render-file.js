@@ -13,10 +13,13 @@ var outputDir
 var currentTransformer
 var jstransformers = {}
 
-// var print = function () {
-//   var args = Array.prototype.slice.call(arguments)
-//   process.send({print: args.join('')})
-// }
+var print = function () {
+  var args = Array.prototype.slice.call(arguments)
+  process.send({print: args.join('')})
+}
+
+global.console.log = print
+global.console.error = print
 
 var handleErr = function (error) {
   if (error) {
@@ -65,8 +68,14 @@ var render = function (file, contents, transforms) {
         jstransformer(require(`jstransformer-${transform}`))
     }
     var transformer = jstransformers[transform]
-    transformer.renderAsync(contents, options[transform] || {})
-      .catch(handleErr)
+    if (transformer.can('renderAsync')) {
+      command = 'renderAsync'
+      parameters = [contents, options[transform || {}]]
+    } else {
+      command = 'renderFileAsync'
+      parameters = [path.join(inputDir, file), options[transform || {}]]
+    }
+    transformer[command](...parameters)
       .then(contents => {
         if (transforms.length > 0) {
           return render(file, contents.body, transforms)
@@ -76,6 +85,7 @@ var render = function (file, contents, transforms) {
       .then(res => {
         resolve(res)
       })
+      .catch(handleErr)
   })
 }
 

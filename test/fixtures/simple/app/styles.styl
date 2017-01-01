@@ -1,7 +1,12 @@
 *, *::before, *::after
   box-sizing: border-box
 
+green = #b8bb26
+blue = #83a598
+cyan = #8ec07c
+
 term = {
+  height: 300px
   background: #282828
   icon-width: 13px
   toolbar: linear-gradient(#e0e0e0, #c3c3c3)
@@ -41,11 +46,36 @@ h2
 h1
   color: blue
 
+span
+  &.green
+    color: green
+
+  &.red
+    color: red
+
+  &.yellow
+    color: yellow
+
+  &.blue
+    color: blue
+
+  &.cyan
+    color: cyan
+
+  &.gray
+    color: gray
+
+  &.bold
+    font-weight: bold
+
+  &.underline
+    text-decoration: underline
+
 .window
   border: 1px solid #a1a1a1
   position: absolute
   left: 50%
-  top: calc(100vh - 100px)
+  top: calc(100vh - 200px)
   transform: translateX(-50%)
   font-family: mac
   box-shadow: -10px 13px 48px 4px alpha(black, .7)
@@ -101,6 +131,7 @@ h1
     background: term.toolbar
 
   .contents
+    height: term.height
     overflow-x: auto
     font-family: monospace
     padding: 5px

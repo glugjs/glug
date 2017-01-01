@@ -7,10 +7,15 @@
     name: Caleb
   }
   transformers: {
-    babel: {
-      presets: [
-        latest
-      ]
+    uglify-js: {
+      mangle: {toplevel: true}
+    }
+    rollup: {
+      format: es
+      plugins: {
+        rollup-plugin-node-resolve: {}
+        rollup-plugin-commonjs: {}
+      }
     }
   }
   files: {
@@ -21,10 +26,7 @@
         **/*.styl
       ]
     }
-    **/*.pug: [
-      pug
-      html-minifier
-    ]
-    **/*.js: babel
+    **/*.pug: pug | html-minifier
+    app.js: rollup | buble | uglify-js
   }
 }

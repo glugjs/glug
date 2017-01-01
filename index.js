@@ -109,6 +109,7 @@ var print = function () {
 }
 
 global.console.log = print
+global.console.error = print
 
 /**
  * Will throw an error, if it exists
@@ -218,9 +219,11 @@ let startWatcher = function () {
   chokidar.watch(config.inputDir).on('change', file => {
     file = file.replace(config.inputDir + '/', '')
     file = file.replace(config.inputDir + '\\', '')
-    renderFile(file)
-      .then(() => bs.reload(files[file].outputPath))
-      .catch(handleErr)
+    if (files[file]) {
+      renderFile(file)
+        .then(() => bs.reload(files[file].outputPath))
+        .catch(handleErr)
+      }
   })
 }
 
