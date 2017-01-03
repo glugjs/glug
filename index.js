@@ -230,11 +230,11 @@ var startBrowserSync = function () {
  */
 let startWatcher = function () {
   chokidar.watch([config.inputDir, configPath])
-    .on('change', file => {
-      if (file === configPath) {
+    .on('all', (event, file) => {
+      if (file === configPath || event === 'add' || event === 'unlink') {
         files = {}
         dependencies = {}
-        return readConfig().then(render)
+        return readConfig().then(render).catch(handleErr)
       }
       file = file.replace(config.inputDir + '/', '')
       file = file.replace(config.inputDir + '\\', '')

@@ -26,11 +26,7 @@ module.exports = {
       }
     },
     rollup: {
-      format: 'es',
-      plugins: {
-        'rollup-plugin-node-resolve': {},
-        'rollup-plugin-commonjs': {}
-      }
+      format: 'es'
     }
   },
   files: {
@@ -42,6 +38,9 @@ module.exports = {
       ]
     },
     '**/*.sml': 'reshape',
-    'app.js': 'rollup | buble | uglify-js'
+    'app.js': {
+      transforms: 'rollup | buble | uglify-js',
+      dependencies: '**/*.js'
+    }
   }
 }

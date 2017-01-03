@@ -1,20 +1,6 @@
-const spinner = function (frames) {
-  var i = 0
-  var frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-	return function () {
-    return frames[i = ++i % frames.length]
-	}
-}
-
-var chalk = {}
-const span = classes => string => `<span class='${classes}'>${string}</span>`
-const styles = ['red', 'blue', 'green', 'yellow', 'gray', 'cyan', 'bold', 'underline']
-styles.forEach(style => {chalk[style] = span(style)})
-
-const symbols = {
-	success: chalk.green('✔'),
-	error: chalk.red('✖')
-}
+import chalk from './chalk'
+import spinner from './elegant-spinner'
+import symbols from './log-symbols'
 
 const last = function (array) {
   return array[array.length - 1]
