@@ -6,20 +6,14 @@ const spinner = function (frames) {
 	}
 }
 
-const red = (string) => `<span class='red'>${string}</span>`
-const blue = (string) => `<span class='blue'>${string}</span>`
-const green = (string) => `<span class='green'>${string}</span>`
-const yellow = (string) => `<span class='yellow'>${string}</span>`
-const gray = (string) => `<span class='gray'>${string}</span>`
-const cyan = (string) => `<span class='cyan'>${string}</span>`
-const bold = (string) => `<span class='bold'>${string}</span>`
-const underline = (string) => `<span class='underline'>${string}</span>`
+var chalk = {}
+const span = classes => string => `<span class='${classes}'>${string}</span>`
+const styles = ['red', 'blue', 'green', 'yellow', 'gray', 'cyan', 'bold', 'underline']
+styles.forEach(style => {chalk[style] = span(style)})
 
 const symbols = {
-	info: blue('ℹ'),
-	success: green('✔'),
-	warning: yellow('⚠'),
-	error: red('✖')
+	success: chalk.green('✔'),
+	error: chalk.red('✖')
 }
 
 const last = function (array) {
@@ -44,10 +38,14 @@ const print = function (string) {
   terminal.innerHTML = termContents.join('\n')
 }
 
+var lastOutput = ''
 const replaceLastOutput = function (string) {
-  termContents.pop()
-  termContents.push(string)
-  terminal.innerHTML = termContents.join('\n')
+  if (lastOutput !== string) {
+    termContents.pop()
+    termContents.push(string)
+    terminal.innerHTML = termContents.join('\n')
+    lastOutput = string
+  }
 }
 
 const nextChar = function () {
@@ -58,7 +56,7 @@ const nextChar = function () {
   } else {
     state = 'output'
     termContents.push('')
-    setInterval(updateTransformers, 500)
+    setInterval(updateTransformers, 350)
   }
 }
 
@@ -86,14 +84,14 @@ const updateTerm = function () {
 }
 
 files = {
-  'index.js': {
-    renderers: ['babel', 'browserify']
-  },
-  'foo.js': {
-    renderers: ['babel', 'browserify']
+  'main.styl': {
+    renderers: ['stylus', 'autoprefixer', 'csso']
   },
   'index.pug': {
     renderers: ['pug', 'html-minifier']
+  },
+  'app.js': {
+    renderers: ['rollup', 'buble', 'uglify-js']
   }
 }
 
@@ -128,19 +126,19 @@ var updateOutput = function () {
     } else if (file.state === 'error') {
       icon = symbols.error
     } else {
-      icon = blue(file.spinner())
+      icon = chalk.blue(file.spinner())
     }
 
-    let renderers = gray(file.renderers
+    let renderers = chalk.gray(file.renderers
       .map(renderer => {
         if (renderer === file.renderers[file.current]) {
-          return cyan(underline(renderer))
+          return chalk.cyan(chalk.underline(renderer))
         }
         return renderer
       })
-      .join(` ${cyan('›')} `))
+      .join(` ${chalk.cyan('›')} `))
 
-    let string = `${icon} ${bold(filename)} ${renderers}`
+    let string = `${icon} ${chalk.bold(filename)} ${renderers}`
 
     if (file.state === 'error' && file.error) {
       string += file.error

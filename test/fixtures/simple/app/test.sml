@@ -24,6 +24,7 @@ html
           .max.icon
           .title config.hjson
         .contents
+          p(md) **hi**
           pre
             | {
             |   browserSync: {

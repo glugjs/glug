@@ -1,23 +1,26 @@
 #!/usr/bin/env node
 
-var basePath = process.cwd()
-require('app-module-path').addPath(`${basePath}/node_modules`)
 var path = require('path')
 var {fork} = require('child_process')
 var fs = require('graceful-fs')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
 var chokidar = require('chokidar')
-var Hjson = require('hjson')
 var browserSync = require('browser-sync')
 var chalk = require('chalk')
 var {sync: glob} = require('glob')
 var figures = require('figures')
 var spinner = require('elegant-spinner')
 var {recursive: merge} = require('merge')
+var basePath = process.cwd()
+var {addPath} = require('app-module-path')
+
+addPath(path.join(basePath, 'node_modules'))
+addPath(basePath)
 
 var bs
 var config
+var configPath = path.join(basePath, 'config.js')
 
 var defaultConfig = {
   transformers: {},
@@ -228,23 +231,15 @@ let startWatcher = function () {
 }
 
 /**
- * Reads the config at `config.hjson`
+ * Reads the config at `config.js`
  * Returns a promise for the parsed config
  * Sets up the global `files` variable
  */
 var readConfig = function () {
-  return new Promise((resolve, reject) =>
-    fs.readFile('config.hjson', 'utf-8', (err, data) => {
-      if (err) {
-        if (err.message ===
-          'ENOENT: no such file or directory, open \'config.hjson\'') {
-          return reject('Can\'t find config at config.hjson')
-        }
-        return reject(err)
-      }
-      resolve(Hjson.parse(data))
-    })
-  ).then(newConfig => {
+  return new Promise((resolve, reject) => {
+    delete require.cache[require.resolve(configPath)]
+    resolve(require(configPath))
+  }).then(newConfig => {
     config = merge(defaultConfig, newConfig)
   }).then(() => {
     for (let fileGroup in config.files) {
@@ -280,7 +275,7 @@ var readConfig = function () {
 }
 
 var startConfigWatcher = function () {
-  chokidar.watch('config.hjson').on('change', file => {
+  chokidar.watch(configPath).on('change', file => {
     print(arguments)
     // print('reloading config')
     // readConfig()
