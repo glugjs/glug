@@ -3,6 +3,8 @@ var content = require('reshape-content')({
   highlight: text => hljs('js', text).value
 })
 
+// comment here
+
 module.exports = {
   browserSync: {
     port: '5678'

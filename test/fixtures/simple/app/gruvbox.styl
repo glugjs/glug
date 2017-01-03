@@ -2,17 +2,48 @@
 Gruvbox style (light) (c) Pavel Pertsev (original style at https://github.com/morhetz/gruvbox)
 */
 
-fg = #3c3836
-bg = #fbf1c7
+style = 'light'
 
-red = #9d0006
-green = #79740e
-yellow = #b57614
-blue = #076678
-purple = #8f3f71
-aqua = #427b58
-gray = #928374
-orange = #af3a03
+gruvbox = {
+  dark: {
+    fg: #ebdbb2
+    bg: #282828
+
+    red: #fb4934
+    green: #b8bb26
+    yellow: #fabd2f
+    blue: #076678
+    purple: #d3869b
+    aqua: #427b58
+    gray: #928374
+    orange: #fe8019
+  }
+  light: {
+    fg: #3c3836
+    bg: #fbf1c7
+
+    red: #9d0006
+    green: #79740e
+    yellow: #b57614
+    blue: #076678
+    purple: #8f3f71
+    aqua: #427b58
+    gray: #928374
+    orange: #af3a03
+  }
+}
+
+fg = gruvbox[style].fg
+bg = gruvbox[style].bg
+
+red = gruvbox[style].red
+green = gruvbox[style].green
+yellow = gruvbox[style].yellow
+blue = gruvbox[style].blue
+purple = gruvbox[style].purple
+aqua = gruvbox[style].aqua
+gray = gruvbox[style].gray
+orange = gruvbox[style].orange
 
 .hljs
   display: block
@@ -29,7 +60,7 @@ orange = #af3a03
 .hljs-keyword,
 .hljs-link,
 .hljs-selector-tag
-  color: red
+  color: orange
 
 .hljs-built_in,
 .hljs-emphasis,
@@ -38,13 +69,13 @@ orange = #af3a03
 .hljs-strong,
 .hljs-title,
 .hljs-variable
-  color: blue
+  color: purple
 
-.hljs-attr,
+// .hljs-attr,
 .hljs-params,
 .hljs-template-tag,
 .hljs-type
-  color: yellow
+  color: fg
 
 .hljs-builtin-name,
 .hljs-doctag,
@@ -68,15 +99,23 @@ orange = #af3a03
 .hljs-symbol
   color: green
 
+.hljs-class
+
+  & > .hljs-keyword
+    color: purple
+
+  & > .hljs-title
+    color: green
+    font-weight: bold
+
 .hljs-attribute,
 .hljs-bullet,
-.hljs-class,
 .hljs-function,
 .hljs-function .hljs-keyword,
 .hljs-meta-keyword,
 .hljs-selector-pseudo,
 .hljs-tag
-  color: aqua
+  color: yellow
 
 .hljs-comment
   color: gray
@@ -86,7 +125,6 @@ orange = #af3a03
 .hljs-number
   color: purple
 
-.hljs-comment,
 .hljs-emphasis
   font-style: italic
 

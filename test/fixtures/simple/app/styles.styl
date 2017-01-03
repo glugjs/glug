@@ -1,21 +1,14 @@
 @import 'app/gruvbox'
 
+cyan = gruvbox.dark.aqua
+
 *, *::before, *::after
   box-sizing: border-box
 
-green = #98971a
-red = #cc241d
-yellow = #d79921
-blue = #458588
-cyan = #689d6a
-gray = #a89984
-
 term = {
   height: 300px
-  dark-background: #282828
-  dark-foreground: #ebdbb2
-  light-background: #fbf1c7
-  light-foreground: #3c3836
+  dark-background: gruvbox.dark.bg
+  dark-foreground: gruvbox.dark.fg
   icon-width: 13px
   toolbar: linear-gradient(#e0e0e0, #c3c3c3)
   title-color: #4e4e4e
@@ -110,8 +103,8 @@ span
     .toolbar
       border-bottom: 1px solid #a1a1a1
     .contents
-      background-color: term.light-background
-      color: term.light-foreground
+      background-color: bg
+      color: fg
     .icon
       margin: term.editor-toolbar-margin
       margin-right: 0

@@ -217,6 +217,7 @@ var startBrowserSync = function () {
   var defaultBrowserSyncConfig = {
     port: 1234,
     logLevel: 'warn',
+    logFileChanges: false,
     server: config.outputDir
   }
 
@@ -304,7 +305,6 @@ var readConfig = function () {
         }
       }
     }
-    console.log(dependencies)
   })
 }
 
