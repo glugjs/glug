@@ -54,6 +54,11 @@ var files = {}
 //    }
 //  }
 
+var dependencies = {}
+//  dependencies = {
+//    'helpers.styl': ['index.styl']
+//  }
+
 var last = function (array) {
   return array[array.length - 1]
 }
@@ -161,7 +166,7 @@ var renderFile = function (file) {
         file: files[file],
         inputDir: config.inputDir,
         outputDir: config.outputDir,
-        options: config.transformers
+        configPath
       })
 
       worker.on('message', message => {
@@ -183,6 +188,10 @@ var renderFile = function (file) {
         }
       })
     })
+  }).then(() => {
+    if (bs.reload) {
+      bs.reload(files[file].outputPath)
+    }
   })
 }
 
@@ -219,15 +228,23 @@ var startBrowserSync = function () {
  * Starts the chokidar input file watcher
  */
 let startWatcher = function () {
-  chokidar.watch(config.inputDir).on('change', file => {
-    file = file.replace(config.inputDir + '/', '')
-    file = file.replace(config.inputDir + '\\', '')
-    if (files[file]) {
-      renderFile(file)
-        .then(() => bs.reload(files[file].outputPath))
-        .catch(handleErr)
+  chokidar.watch([config.inputDir, configPath])
+    .on('change', file => {
+      if (file === configPath) {
+        files = {}
+        dependencies = {}
+        return readConfig().then(render)
       }
-  })
+      file = file.replace(config.inputDir + '/', '')
+      file = file.replace(config.inputDir + '\\', '')
+      if (files[file]) {
+        renderFile(file).catch(handleErr)
+      } else if (dependencies[file]) {
+        dependencies[file].forEach(sourceFile => {
+          renderFile(sourceFile).catch(handleErr)
+        })
+      }
+    })
 }
 
 /**
@@ -246,6 +263,10 @@ var readConfig = function () {
       if ({}.hasOwnProperty.call(config.files, fileGroup)) {
         let group = config.files[fileGroup]
         let renderers
+        let fileDeps = group.dependencies || []
+        if (typeof fileDeps === 'string') {
+          fileDeps = [fileDeps]
+        }
 
         if (group.transforms) {
           group = group.transforms
@@ -261,7 +282,19 @@ var readConfig = function () {
           // eslint-disable-next-line import/no-dynamic-require
           require(`jstransformer-${[last(renderers)]}`).outputFormat
 
-        for (let file of glob(fileGroup, {cwd: config.inputDir})) {
+        let matchedFiles = glob(fileGroup, {cwd: config.inputDir})
+
+        for (let dependencyGlob of fileDeps) {
+          let matchedDependencies = glob(dependencyGlob,
+            {cwd: config.inputDir})
+          for (let dependency of matchedDependencies) {
+            dependencies[dependency] = dependencies[dependency] || []
+            dependencies[dependency] = dependencies[dependency]
+              .concat(matchedFiles)
+          }
+        }
+
+        for (let file of matchedFiles) {
           let outputPath = file.replace(path.extname(file), '.' + outputFormat)
           files[file] = {
             renderers,
@@ -271,18 +304,7 @@ var readConfig = function () {
         }
       }
     }
-  })
-}
-
-var startConfigWatcher = function () {
-  chokidar.watch(configPath).on('change', file => {
-    print(arguments)
-    // print('reloading config')
-    // readConfig()
-    //   .then(() => {
-    //     startBrowserSync()
-    //     render()
-    //   })
+    console.log(dependencies)
   })
 }
 

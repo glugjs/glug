@@ -22,31 +22,40 @@ html
           .close.icon
           .min.icon
           .max.icon
-          .title config.hjson
+          .title config.js
         .contents
-          pre
-            | {
+          pre(highlight)
+            | module.exports = {
             |   browserSync: {
-            |     port: 5678
-            |   }
-            |   outputDir: public
+            |     port: '5678'
+            |   },
+            |   outputDir: 'public',
             |   locals: {
-            |     name: Caleb
-            |   }
+            |     name: 'Caleb'
+            |   },
             |   transformers: {
-            |     uglify-js: {
+            |     reshape: {
+            |       parser: 'sugarml'
+            |     },
+            |     'uglify-js': {
             |       mangle: {
             |         toplevel: true
             |       }
-            |     }
+            |     },
             |     rollup: {
-            |       format: es
+            |       format: 'es'
             |     }
-            |   }
+            |   },
             |   files: {
-            |     **/*.styl: stylus | autoprefixer | csso
-            |     **/*.pug: pug | html-minifier
-            |     app.js: rollup | buble | uglify-js
+            |     '**/*.styl': {
+            |       transforms: 'stylus | autoprefixer | csso',
+            |       depends_on: [
+            |         '**/*.css',
+            |         '**/*.styl'
+            |       ]
+            |     },
+            |     '**/*.sml': 'reshape',
+            |     'app.js': 'rollup | buble | uglify-js'
             |   }
             | }
 

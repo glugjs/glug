@@ -70,10 +70,16 @@ var render = function (file, contents, transforms) {
     var transformer = jstransformers[transform]
     if (transformer.can('renderAsync')) {
       command = 'renderAsync'
-      parameters = [contents, options[transform || {}]]
+      parameters = [
+        contents,
+        options[transform] || {}
+      ]
     } else {
       command = 'renderFileAsync'
-      parameters = [path.join(inputDir, file), options[transform || {}]]
+      parameters = [
+        path.join(inputDir, file),
+        options[transform] || {}
+      ]
     }
     transformer[command](...parameters)
       .then(contents => {
@@ -92,7 +98,7 @@ var render = function (file, contents, transforms) {
 process.on('message', data => {
   inputDir = data.inputDir
   outputDir = data.outputDir
-  options = data.options || {}
+  options = require(data.configPath).transformers
   readFile(data.filename)
     .then(contents => render(
       data.filename, contents, data.file.renderers))

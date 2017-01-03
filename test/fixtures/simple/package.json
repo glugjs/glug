@@ -2,6 +2,7 @@
   "dependencies": {
     "elegant-spinner": "^1.0.1",
     "glug": "^0.0.14",
+    "highlight.js": "^9.9.0",
     "jstransformer-autoprefixer": "^1.1.2",
     "jstransformer-buble": "^0.2.1",
     "jstransformer-csso": "^0.0.1",
@@ -13,6 +14,7 @@
     "jstransformer-uglify-js": "^1.1.1",
     "markdown-it": "^8.2.2",
     "reshape-content": "^0.2.0",
+    "reshape-custom-elements": "^0.1.0",
     "rollup-plugin-commonjs": "^7.0.0",
     "rollup-plugin-node-resolve": "^2.0.0",
     "sugarml": "^0.4.0"

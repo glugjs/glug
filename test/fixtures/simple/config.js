@@ -1,6 +1,6 @@
-var markdown = require('markdown-it')({})
+var hljs = require('highlight.js').highlight
 var content = require('reshape-content')({
-  md: (md) => markdown.render(md)
+  highlight: text => hljs('js', text).value
 })
 
 module.exports = {
@@ -32,14 +32,13 @@ module.exports = {
     }
   },
   files: {
-    '**/*.styl': {
+    'styles.styl': {
       transforms: 'stylus | autoprefixer | csso',
-      depends_on: [
+      dependencies: [
         '**/*.css',
         '**/*.styl'
       ]
     },
-    '**/*.pug': 'pug | html-minifier',
     '**/*.sml': 'reshape',
     'app.js': 'rollup | buble | uglify-js'
   }
