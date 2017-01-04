@@ -24,40 +24,7 @@ html
           .max.icon
           .title config.js
         .contents
-          pre(highlight)
-            | module.exports = {
-            |   browserSync: {
-            |     port: '5678'
-            |   },
-            |   outputDir: 'public',
-            |   locals: {
-            |     name: 'Caleb'
-            |   },
-            |   transformers: {
-            |     reshape: {
-            |       parser: 'sugarml'
-            |     },
-            |     'uglify-js': {
-            |       mangle: {
-            |         toplevel: true
-            |       }
-            |     },
-            |     rollup: {
-            |       format: 'es'
-            |     }
-            |   },
-            |   files: {
-            |     '**/*.styl': {
-            |       transforms: 'stylus | autoprefixer | csso',
-            |       depends_on: [
-            |         '**/*.css',
-            |         '**/*.styl'
-            |       ]
-            |     },
-            |     '**/*.sml': 'reshape',
-            |     'app.js': 'rollup | buble | uglify-js'
-            |   }
-            | }
+          pre(highlight) {{ config }}
 
     script(src="/app.js")
 

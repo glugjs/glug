@@ -1,6 +1,12 @@
 import chalk from './chalk'
 import spinner from './elegant-spinner'
 import symbols from './log-symbols'
+import files from './read-config'
+
+console.log(files)
+console.log(symbols)
+console.log(chalk)
+console.log(spinner)
 
 const last = function (array) {
   return array[array.length - 1]
@@ -66,18 +72,6 @@ const updateTerm = function () {
     nextChar()
   } else if (state === 'output') {
     updateOutput()
-  }
-}
-
-files = {
-  'main.styl': {
-    renderers: ['stylus', 'autoprefixer', 'csso']
-  },
-  'index.pug': {
-    renderers: ['pug', 'html-minifier']
-  },
-  'app.js': {
-    renderers: ['rollup', 'buble', 'uglify-js']
   }
 }
 

@@ -1,6 +1,9 @@
 var hljs = require('highlight.js').highlight
 var content = require('reshape-content')({
-  highlight: text => hljs('js', text).value
+  highlight: text => {
+    console.log(`highlighting ${text}`)
+    return hljs('js', text).value
+  }
 })
 
 // comment here
@@ -11,12 +14,14 @@ module.exports = {
   },
   outputDir: 'public',
   locals: {
-    name: 'Caleb'
+    name: 'Caleb',
+    config: JSON.stringify(require('./app/config'), null, 2)
   },
   transformers: {
     reshape: {
       parser: 'sugarml',
       plugins: [
+        require('reshape-expressions')(),
         content
       ]
     },
@@ -26,7 +31,10 @@ module.exports = {
       }
     },
     rollup: {
-      format: 'es'
+      format: 'es',
+      plugins: {
+        'rollup-plugin-commonjs': {} 
+      }
     }
   },
   files: {
@@ -39,7 +47,7 @@ module.exports = {
     },
     '**/*.sml': 'reshape',
     'app.js': {
-      transforms: 'rollup | buble | uglify-js',
+      transforms: 'rollup',
       dependencies: '**/*.js'
     }
   }

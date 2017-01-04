@@ -8,6 +8,7 @@ var chalk = require('chalk')
 var jstransformer = require('jstransformer')
 
 var options
+var locals
 var inputDir
 var outputDir
 var currentTransformer
@@ -25,7 +26,7 @@ var handleErr = function (error) {
   if (error) {
     process.send({error: chalk.red(`
 ${chalk.bold(`Error from ${currentTransformer}`)}
-${error.message}`)})
+${error.stack}`)})
   }
 }
 
@@ -72,13 +73,15 @@ var render = function (file, contents, transforms) {
       command = 'renderAsync'
       parameters = [
         contents,
-        options[transform] || {}
+        options[transform] || {},
+        locals
       ]
     } else {
       command = 'renderFileAsync'
       parameters = [
         path.join(inputDir, file),
-        options[transform] || {}
+        options[transform] || {},
+        locals
       ]
     }
     transformer[command](...parameters)
@@ -98,7 +101,9 @@ var render = function (file, contents, transforms) {
 process.on('message', data => {
   inputDir = data.inputDir
   outputDir = data.outputDir
-  options = require(data.configPath).transformers
+  let config = require(data.configPath)
+  options = config.transformers
+  locals = config.locals
   readFile(data.filename)
     .then(contents => render(
       data.filename, contents, data.file.renderers))
