@@ -6,8 +6,6 @@ var content = require('reshape-content')({
   }
 })
 
-// comment here
-
 module.exports = {
   browserSync: {
     port: '5678'
