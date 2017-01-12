@@ -1,8 +1,8 @@
-export default spinner = function (frames) {
+export default function (frames) {
   var i = 0
   var frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-	return function () {
+  return function () {
     return frames[i = ++i % frames.length]
-	}
+  }
 }
 

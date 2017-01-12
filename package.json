@@ -30,6 +30,7 @@
     "glob": "^7.1.1",
     "graceful-fs": "^4.1.11",
     "gray-matter": "^2.0.2",
+    "hound": "^1.0.4",
     "inquirer": "^2.0.0",
     "jstransformer": "^1.0.0",
     "lazy-require": "^2.2.0",

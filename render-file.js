@@ -101,7 +101,7 @@ var render = function (file, contents, transforms) {
 process.on('message', data => {
   inputDir = data.inputDir
   outputDir = data.outputDir
-  let config = require(data.configPath)
+  let config = require(data.rootConfigPath)
   options = config.transformers
   locals = config.locals
   readFile(data.filename)

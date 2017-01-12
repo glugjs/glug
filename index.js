@@ -20,7 +20,9 @@ addPath(basePath)
 
 var bs
 var config
-var configPath = path.join(basePath, 'config.js')
+var configPath = 'config.js'
+var rootConfigPath = path.join(basePath, 'config.js')
+const maxWorkers = 4
 
 var defaultConfig = {
   transformers: {},
@@ -78,8 +80,12 @@ var updateOutput = function () {
       icon = chalk.green(file.spinner())
     } else if (file.state === 'error') {
       icon = symbols.error
-    } else {
+    } else if (file.state === 'started') {
       icon = chalk.blue(file.spinner())
+    } else if (file.state === 'pending') {
+      icon = chalk.yellow(file.spinner())
+    } else {
+      icon = ' '
     }
 
     let renderers = chalk.gray(file.renderers
@@ -102,7 +108,7 @@ var updateOutput = function () {
   logUpdate(string)
 }
 
-setInterval(updateOutput, 300)
+setInterval(updateOutput, 100)
 
 /**
  * Prints to the console, and resets the persistent log
@@ -132,22 +138,46 @@ var handleErr = function (error) {
   }
 }
 
+checkForWorkers = function () {
+  for (let worker of workers) {
+    if (worker.open) {
+      worker.open = false
+      return worker
+    }
+  }
+  return false
+}
+
+createWorker = function () {
+  workers.push({
+    worker: fork(path.join(__dirname, 'render-file')),
+    open: false
+  })
+  return workers[workers.length - 1]
+}
+
+awaitWorker = function () {
+  return new Promise((resolve, reject) => {
+    let checker = setInterval(() => {
+      let maybeWorker = checkForWorkers()
+      if (maybeWorker) {
+        clearInterval(checker)
+        maybeWorker.open = false
+        resolve(maybeWorker)
+      }
+    }, 200)
+  })
+}
+
 /**
  * Returns a promise for a worker
  */
 var getWorker = function () {
-  return new Promise(resolve => {
-    for (let worker of workers) {
-      if (worker.open) {
-        worker.open = false
-        return resolve(worker)
-      }
+  return new Promise((resolve, reject) => {
+    if (workers.length < maxWorkers) {
+      return resolve(createWorker())
     }
-    workers.push({
-      worker: fork(path.join(__dirname, 'render-file')),
-      open: false
-    })
-    resolve(workers[workers.length - 1].worker)
+    awaitWorker().then(resolve)
   })
 }
 
@@ -157,19 +187,30 @@ var getWorker = function () {
  */
 var renderFile = function (file) {
   return new Promise((resolve, reject) => {
+    console.log(files[file].state)
+    if (
+      files[file].state === 'started' ||
+      files[file].state === 'pending'
+    ) {
+      return resolve(false)
+    }
+
     files[file] = files[file] || {}
-    files[file].state = 'started'
+    files[file].state = 'pending'
 
     getWorker().then(worker => {
-      worker.send({
+      files[file].state = 'started'
+      worker.currentFile = file
+      worker.worker.send({
         filename: file,
         file: files[file],
         inputDir: config.inputDir,
         outputDir: config.outputDir,
-        configPath
+        configPath,
+        rootConfigPath
       })
 
-      worker.on('message', message => {
+      var handleMessage = function (message) {
         if (message.transformer) {
           files[file].current = message.transformer
         } else if (message.print) {
@@ -184,12 +225,15 @@ var renderFile = function (file) {
         } else if (message === 'done') {
           files[file].state = 'completed'
           worker.open = true
-          return resolve()
+          worker.worker.removeListener('message', handleMessage)
+          return resolve(true)
         }
-      })
+      }
+
+      worker.worker.on('message', handleMessage)
     })
-  }).then(() => {
-    if (bs.reload) {
+  }).then(reload => {
+    if (reload && bs.reload) {
       bs.reload(files[file].outputPath)
     }
   })
@@ -202,8 +246,7 @@ var render = function () {
   return new Promise(() => {
     for (let file in files) {
       if ({}.hasOwnProperty.call(files, file)) {
-        renderFile(file)
-          .catch(handleErr)
+        renderFile(file).catch(handleErr)
       }
     }
   })
@@ -231,7 +274,8 @@ var startBrowserSync = function () {
 let startWatcher = function () {
   chokidar.watch([config.inputDir, configPath])
     .on('all', (event, file) => {
-      if (file === configPath || event === 'add' || event === 'unlink') {
+      console.log(`${file} ${event}ed`)
+      if (file === configPath) {
         files = {}
         dependencies = {}
         return readConfig().then(render).catch(handleErr)
@@ -255,8 +299,8 @@ let startWatcher = function () {
  */
 var readConfig = function () {
   return new Promise((resolve, reject) => {
-    delete require.cache[require.resolve(configPath)]
-    resolve(require(configPath))
+    delete require.cache[require.resolve(rootConfigPath)]
+    resolve(require(rootConfigPath))
   }).then(newConfig => {
     config = merge(defaultConfig, newConfig)
   }).then(() => {

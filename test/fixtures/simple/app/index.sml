@@ -24,7 +24,6 @@ html
           .max.icon
           .title config.js
         .contents
-          pre(highlight) {{ config }}
-
+          pre(highlight) {{{ config }}}
     script(src="/app.js")
 

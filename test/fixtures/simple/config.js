@@ -1,10 +1,10 @@
+var fs = require('fs')
 var hljs = require('highlight.js').highlight
-var content = require('reshape-content')({
-  highlight: text => {
-    console.log(`highlighting ${text}`)
-    return hljs('js', text).value
-  }
-})
+var highlight = text => {
+  return hljs('js', text).value
+}
+
+var config = highlight(fs.readFileSync('./app/config.js', 'utf8'))
 
 module.exports = {
   browserSync: {
@@ -13,14 +13,13 @@ module.exports = {
   outputDir: 'public',
   locals: {
     name: 'Caleb',
-    config: JSON.stringify(require('./app/config'), null, 2)
+    config
   },
   transformers: {
     reshape: {
       parser: 'sugarml',
       plugins: [
-        require('reshape-expressions')(),
-        content
+        require('reshape-expressions')()
       ]
     },
     'uglify-js': {
