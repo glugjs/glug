@@ -232,7 +232,7 @@ var renderFile = function (file) {
       worker.worker.on('message', handleMessage)
     })
   }).then(reload => {
-    if (reload && bs.reload) {
+    if (bs && reload && bs.reload) {
       bs.reload(files[file].outputPath)
     }
   })
@@ -242,13 +242,13 @@ var renderFile = function (file) {
  * Renders all files
  */
 var render = function () {
-  return new Promise(() => {
-    for (let file in files) {
-      if ({}.hasOwnProperty.call(files, file)) {
-        renderFile(file).catch(handleErr)
-      }
+  let filePromises = []
+  for (let file in files) {
+    if ({}.hasOwnProperty.call(files, file)) {
+      filePromises.push(renderFile(file).catch(handleErr))
     }
-  })
+  }
+  return Promise.all(filePromises)
 }
 
 /**
@@ -359,7 +359,6 @@ var readConfig = function () {
  */
 var glug = {
   watch() {
-    print('watching')
     return readConfig()
       .then(startBrowserSync)
       .then(startWatcher)
@@ -367,9 +366,10 @@ var glug = {
       .catch(handleErr)
   },
   build() {
-    print('building')
     return readConfig()
       .then(render)
+      .then(updateOutput)
+      .then(process.exit)
       .catch(handleErr)
   }
 }
