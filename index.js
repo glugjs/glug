@@ -20,7 +20,7 @@ addPath(basePath)
 
 var bs
 var config
-var configPath = 'config.js'
+var configPath = 'cletonfig.js'
 var rootConfigPath = path.join(basePath, 'config.js')
 const maxWorkers = 4
 
@@ -187,7 +187,6 @@ var getWorker = function () {
  */
 var renderFile = function (file) {
   return new Promise((resolve, reject) => {
-    console.log(files[file].state)
     if (
       files[file].state === 'started' ||
       files[file].state === 'pending'
@@ -274,7 +273,6 @@ var startBrowserSync = function () {
 let startWatcher = function () {
   chokidar.watch([config.inputDir, configPath])
     .on('all', (event, file) => {
-      console.log(`${file} ${event}ed`)
       if (file === configPath) {
         files = {}
         dependencies = {}
@@ -307,6 +305,7 @@ var readConfig = function () {
     for (let fileGroup in config.files) {
       if ({}.hasOwnProperty.call(config.files, fileGroup)) {
         let group = config.files[fileGroup]
+        // like **/*.js
         let renderers
         let fileDeps = group.dependencies || []
         if (typeof fileDeps === 'string') {
@@ -330,8 +329,9 @@ var readConfig = function () {
         let matchedFiles = glob(fileGroup, {cwd: config.inputDir})
 
         for (let dependencyGlob of fileDeps) {
-          let matchedDependencies = glob(dependencyGlob,
-            {cwd: config.inputDir})
+          let matchedDependencies = glob(dependencyGlob, {
+            cwd: config.inputDir
+          })
           for (let dependency of matchedDependencies) {
             dependencies[dependency] = dependencies[dependency] || []
             dependencies[dependency] = dependencies[dependency]

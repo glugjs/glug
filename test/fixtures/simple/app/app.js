@@ -3,11 +3,6 @@ import spinner from './elegant-spinner'
 import symbols from './log-symbols'
 import files from './read-config'
 
-console.log(files)
-console.log(symbols)
-console.log(chalk)
-console.log(spinner)
-
 const last = function (array) {
   return array[array.length - 1]
 }

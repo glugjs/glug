@@ -8,8 +8,7 @@ module.exports = {
   },
   transformers: {
     reshape: {
-      parser: 'sugarml',
-      plugins: []
+      parser: 'sugarml'
     },
     'uglify-js': {
       mangle: {

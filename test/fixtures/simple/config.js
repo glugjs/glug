@@ -30,7 +30,8 @@ module.exports = {
     rollup: {
       format: 'es',
       plugins: {
-        'rollup-plugin-commonjs': {} 
+        'rollup-plugin-commonjs': {},
+        'rollup-plugin-node-resolve': {}
       }
     }
   },
@@ -42,7 +43,10 @@ module.exports = {
         '**/*.styl'
       ]
     },
-    '**/*.sml': 'reshape',
+    '**/*.sml': {
+      transforms: 'reshape',
+      dependencies: 'config.js'
+    },
     'app.js': {
       transforms: 'rollup',
       dependencies: '**/*.js'
