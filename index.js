@@ -20,7 +20,7 @@ addPath(basePath)
 
 var bs
 var config
-var configPath = 'cletonfig.js'
+var configPath = 'config.js'
 var rootConfigPath = path.join(basePath, 'config.js')
 const maxWorkers = 4
 
@@ -340,7 +340,13 @@ var readConfig = function () {
         }
 
         for (let file of matchedFiles) {
-          let outputPath = file.replace(path.extname(file), '.' + outputFormat)
+          let outputPath
+          if (path.extname(file) !== '') {
+            outputPath =
+              file.replace(path.extname(file), '.' + outputFormat)
+          } else {
+            outputPath = file
+          }
           files[file] = {
             renderers,
             inputPath: file,
