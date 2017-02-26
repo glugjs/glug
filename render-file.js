@@ -69,6 +69,8 @@ var render = function (file, contents, transforms) {
         jstransformer(require(`jstransformer-${transform}`))
     }
     var transformer = jstransformers[transform]
+    var command
+    var parameters
     if (transformer.can('renderAsync')) {
       command = 'renderAsync'
       parameters = [
@@ -101,6 +103,7 @@ var render = function (file, contents, transforms) {
 process.on('message', data => {
   inputDir = data.inputDir
   outputDir = data.outputDir
+  // eslint-disable-next-line import/no-dynamic-require
   let config = require(data.rootConfigPath)
   options = config.transformers
   locals = config.locals

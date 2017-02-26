@@ -2,7 +2,6 @@
 
 var path = require('path')
 var {fork} = require('child_process')
-var fs = require('graceful-fs')
 var logUpdate = require('log-update')
 var symbols = require('log-symbols')
 var chokidar = require('chokidar')
@@ -12,9 +11,9 @@ var {sync: glob} = require('glob')
 var figures = require('figures')
 var spinner = require('elegant-spinner')
 var {recursive: merge} = require('merge')
-var basePath = process.cwd()
 var {addPath} = require('app-module-path')
 
+var basePath = process.cwd()
 addPath(path.join(basePath, 'node_modules'))
 addPath(basePath)
 
@@ -29,7 +28,7 @@ var defaultConfig = {
   inputDir: 'app',
   outputDir: 'public',
   locals: {},
-  files: {},
+  files: {}
 }
 
 var workers = []
@@ -138,7 +137,7 @@ var handleErr = function (error) {
   }
 }
 
-checkForWorkers = function () {
+var checkForWorkers = function () {
   for (let worker of workers) {
     if (worker.open) {
       worker.open = false
@@ -148,7 +147,7 @@ checkForWorkers = function () {
   return false
 }
 
-createWorker = function () {
+var createWorker = function () {
   workers.push({
     worker: fork(path.join(__dirname, 'render-file')),
     open: false
@@ -156,8 +155,8 @@ createWorker = function () {
   return workers[workers.length - 1]
 }
 
-awaitWorker = function () {
-  return new Promise((resolve, reject) => {
+var awaitWorker = function () {
+  return new Promise(resolve => {
     let checker = setInterval(() => {
       let maybeWorker = checkForWorkers()
       if (maybeWorker) {
@@ -173,7 +172,7 @@ awaitWorker = function () {
  * Returns a promise for a worker
  */
 var getWorker = function () {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     if (workers.length < maxWorkers) {
       return resolve(createWorker())
     }
@@ -268,36 +267,14 @@ var startBrowserSync = function () {
 }
 
 /**
- * Starts the chokidar input file watcher
- */
-let startWatcher = function () {
-  chokidar.watch([config.inputDir, configPath])
-    .on('all', (event, file) => {
-      if (file === configPath) {
-        files = {}
-        dependencies = {}
-        return readConfig().then(render).catch(handleErr)
-      }
-      file = file.replace(config.inputDir + '/', '')
-      file = file.replace(config.inputDir + '\\', '')
-      if (files[file]) {
-        renderFile(file).catch(handleErr)
-      } else if (dependencies[file]) {
-        dependencies[file].forEach(sourceFile => {
-          renderFile(sourceFile).catch(handleErr)
-        })
-      }
-    })
-}
-
-/**
  * Reads the config at `config.js`
  * Returns a promise for the parsed config
  * Sets up the global `files` variable
  */
 var readConfig = function () {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     delete require.cache[require.resolve(rootConfigPath)]
+    // eslint-disable-next-line import/no-dynamic-require
     resolve(require(rootConfigPath))
   }).then(newConfig => {
     config = merge(defaultConfig, newConfig)
@@ -341,11 +318,11 @@ var readConfig = function () {
 
         for (let file of matchedFiles) {
           let outputPath
-          if (path.extname(file) !== '') {
+          if (path.extname(file) === '') {
+            outputPath = file
+          } else {
             outputPath =
               file.replace(path.extname(file), '.' + outputFormat)
-          } else {
-            outputPath = file
           }
           files[file] = {
             renderers,
@@ -356,6 +333,29 @@ var readConfig = function () {
       }
     }
   })
+}
+
+/**
+ * Starts the chokidar input file watcher
+ */
+let startWatcher = function () {
+  chokidar.watch([config.inputDir, configPath])
+    .on('all', (event, file) => {
+      if (file === configPath) {
+        files = {}
+        dependencies = {}
+        return readConfig().then(render).catch(handleErr)
+      }
+      file = file.replace(config.inputDir + '/', '')
+      file = file.replace(config.inputDir + '\\', '')
+      if (files[file]) {
+        renderFile(file).catch(handleErr)
+      } else if (dependencies[file]) {
+        dependencies[file].forEach(sourceFile => {
+          renderFile(sourceFile).catch(handleErr)
+        })
+      }
+    })
 }
 
 /**
