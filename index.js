@@ -318,7 +318,9 @@ var readConfig = function () {
 
         for (let file of matchedFiles) {
           let outputPath
-          if (path.extname(file) === '') {
+          if (group.outputPath) {
+            outputPath = group.outputPath
+          } else if (path.extname(file) === '') {
             outputPath = file
           } else {
             outputPath =
