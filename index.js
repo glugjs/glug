@@ -282,11 +282,17 @@ var readConfig = function () {
     for (let fileGroup in config.files) {
       if ({}.hasOwnProperty.call(config.files, fileGroup)) {
         let group = config.files[fileGroup]
+        let groupOutputOverride
         // like **/*.js
         let renderers
         let fileDeps = group.dependencies || []
+
         if (typeof fileDeps === 'string') {
           fileDeps = [fileDeps]
+        }
+
+        if (group.outputPath) {
+          groupOutputOverride = group.outputPath
         }
 
         if (group.transforms) {
@@ -318,8 +324,8 @@ var readConfig = function () {
 
         for (let file of matchedFiles) {
           let outputPath
-          if (group.outputPath) {
-            outputPath = group.outputPath
+          if (groupOutputOverride) {
+            outputPath = groupOutputOverride
           } else if (path.extname(file) === '') {
             outputPath = file
           } else {
