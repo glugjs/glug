@@ -1,6 +1,8 @@
 var basePath = process.cwd()
 require('app-module-path').addPath(`${basePath}/node_modules`)
 
+var {recursive: merge} = require('merge')
+var matter = require('gray-matter')
 var path = require('path')
 var fs = require('graceful-fs')
 var mkdirp = require('mkdirp')
@@ -106,10 +108,13 @@ process.on('message', data => {
   // eslint-disable-next-line import/no-dynamic-require
   let config = require(data.rootConfigPath)
   options = config.transformers
-  locals = config.locals
   readFile(data.filename)
-    .then(contents => render(
-      data.filename, contents, data.file.renderers))
+    .then(fileText => {
+      var {content, data: frontmatter} = matter(fileText)
+      locals = merge(config.locals, frontmatter)
+      return render(
+        data.filename, content, data.file.renderers)
+    })
     .then(contents => {
       process.send('writing')
       return writeFile(data.file.outputPath, contents.body)
