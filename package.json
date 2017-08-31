@@ -23,7 +23,7 @@
     "glob": "^7.1.1",
     "graceful-fs": "^4.1.11",
     "gray-matter": "^2.0.2",
-    "inquirer": "^2.0.0",
+    "inquirer": "^3.2.3",
     "jstransformer": "^1.0.0",
     "logdown": "^1.4.2",
     "mkdirp": "^0.5.1",
