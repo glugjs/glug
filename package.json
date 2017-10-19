@@ -22,7 +22,7 @@
     "fs-readdir-recursive": "^1.0.0",
     "glob": "^7.1.1",
     "graceful-fs": "^4.1.11",
-    "gray-matter": "^2.0.2",
+    "gray-matter": "^3.1.0",
     "inquirer": "^2.0.0",
     "jstransformer": "^1.0.0",
     "logdown": "^1.4.2",
